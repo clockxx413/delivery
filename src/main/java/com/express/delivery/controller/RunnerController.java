@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * 跑腿员控制器
  */
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/runner")
 public class RunnerController {
