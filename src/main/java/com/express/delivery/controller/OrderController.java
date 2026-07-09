@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * 订单控制器
  */
-@CrossOrigin(origins = "*")
+
 @RestController
 @RequestMapping("/api/order")
 public class OrderController {

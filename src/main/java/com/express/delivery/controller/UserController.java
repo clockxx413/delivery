@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 /**
  * 用户控制器
  */
-@CrossOrigin(origins = "*")
+
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
