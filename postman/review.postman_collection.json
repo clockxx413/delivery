@@ -1,0 +1,122 @@
+{
+  "info": {
+    "name": "校园快递代取 - 评价模块 API",
+    "description": "成员D - 周四任务：评价模块接口测试",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "提交评价-对跑腿员",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/review",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "review"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"orderId\": 1,\n  \"reviewerId\": 1,\n  \"targetUserId\": 2,\n  \"score\": 5,\n  \"content\": \"配送非常快，态度很好！\",\n  \"type\": \"RUNNER_REVIEW\"\n}"
+        }
+      }
+    },
+    {
+      "name": "提交评价-对发布者",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/review",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "review"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"orderId\": 1,\n  \"reviewerId\": 2,\n  \"targetUserId\": 1,\n  \"score\": 4,\n  \"content\": \"发布者信息准确，沟通顺畅\",\n  \"type\": \"PUBLISHER_REVIEW\"\n}"
+        }
+      }
+    },
+    {
+      "name": "查询评价详情",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8080/api/review/1",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "review", "1"]
+        }
+      }
+    },
+    {
+      "name": "查询订单的所有评价",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8080/api/review/order/1",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "review", "order", "1"]
+        }
+      }
+    },
+    {
+      "name": "查询用户的评价列表",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8080/api/review/user/2?page=1&size=10",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "review", "user", "2"],
+          "query": [
+            {"key": "page", "value": "1"},
+            {"key": "size", "value": "10"}
+          ]
+        }
+      }
+    },
+    {
+      "name": "查询用户评价-按类型筛选",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8080/api/review/user/2?page=1&size=10&type=RUNNER_REVIEW",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "review", "user", "2"],
+          "query": [
+            {"key": "page", "value": "1"},
+            {"key": "size", "value": "10"},
+            {"key": "type", "value": "RUNNER_REVIEW"}
+          ]
+        }
+      }
+    },
+    {
+      "name": "查询用户评分统计",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8080/api/review/user/2/rating-stats",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "review", "user", "2", "rating-stats"]
+        }
+      }
+    }
+  ]
+}

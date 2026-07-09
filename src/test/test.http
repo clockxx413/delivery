@@ -1,0 +1,97 @@
+### ====================== 评价模块 ReviewController ======================
+### 1. 提交评价（POST）
+POST http://localhost:8080/api/review
+Content-Type: application/json
+
+{
+  "orderId": 1,
+  "userId": 1,
+  "targetUserId": 2,
+  "type": "RUNNER_REVIEW",
+  "rating": 5,
+  "content": "配送速度很快，服务很好"
+}
+
+### 2. 查询评价详情（GET）
+GET http://localhost:8080/api/review/1
+Accept: application/json
+
+### 3. 查询某订单的评价列表（GET）
+GET http://localhost:8080/api/review/order/1
+Accept: application/json
+
+### 4. 分页查询某用户的评价列表（GET）
+GET http://localhost:8080/api/review/user/1?page=1&size=10&type=RUNNER_REVIEW
+Accept: application/json
+
+### 5. 查询用户评分统计（GET）
+GET http://localhost:8080/api/review/user/1/rating-stats
+Accept: application/json
+
+
+### ====================== 订单模块 OrderController ======================
+### 6. 发布订单（POST）
+POST http://localhost:8080/api/order
+Content-Type: application/json
+
+{
+  "publisherId": 1,
+  "pickupAddress": "菜鸟驿站",
+  "deliveryAddress": "学生宿舍1号楼",
+  "reward": 5,
+  "remark": "轻拿轻放"
+}
+
+### 7. 查询订单详情（GET）
+GET http://localhost:8080/api/order/1
+Accept: application/json
+
+### 8. 分页查询订单列表（GET，支持筛选）
+GET http://localhost:8080/api/order?page=1&size=10&status=PENDING&publisherId=1
+Accept: application/json
+
+### 9. 跑腿员接单（PUT）
+PUT http://localhost:8080/api/order/1/accept
+Content-Type: application/json
+
+{
+  "runnerId": 2
+}
+
+### 10. 开始配送（PUT）
+PUT http://localhost:8080/api/order/1/deliver
+Content-Type: application/json
+
+{
+  "runnerId": 2
+}
+
+### 11. 完成订单（PUT）
+PUT http://localhost:8080/api/order/1/complete
+Content-Type: application/json
+
+{
+  "runnerId": 2
+}
+
+### 12. 取消订单（PUT）
+PUT http://localhost:8080/api/order/1/cancel
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "reason": "临时有事不需要了"
+}
+
+
+### ====================== 跑腿员模块 RunnerController ======================
+### 13. 跑腿员申请（POST）
+POST http://localhost:8080/api/runner/apply
+Content-Type: application/json
+
+{
+  "userId": 2,
+  "name": "张三",
+  "studentId": "2024001001",
+  "phone": "13800138000"
+}

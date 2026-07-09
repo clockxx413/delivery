@@ -1,0 +1,30 @@
+{
+  "info": {
+    "name": "校园快递代取 - 跑腿模块 API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "跑腿员申请",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/runner/apply",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "runner", "apply"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": 1,\n  \"realName\": \"张三\",\n  \"phone\": \"13800138000\",\n  \"studentId\": \"20240001\"\n}"
+        }
+      }
+    }
+  ]
+}

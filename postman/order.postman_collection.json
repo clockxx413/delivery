@@ -1,0 +1,181 @@
+{
+  "info": {
+    "name": "校园快递代取 - 订单模块 API",
+    "description": "成员D - 周三任务：订单模块接口测试",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "发布订单",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/order",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "order"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"publisherId\": 1,\n  \"expressCompany\": \"中通快递\",\n  \"expressCode\": \"ZT20240709001\",\n  \"pickupAddress\": \"菜鸟驿站A区\",\n  \"deliveryAddress\": \"学生宿舍3号楼501\",\n  \"recipientPhone\": \"13900139000\",\n  \"description\": \"小件包裹，文件类\",\n  \"tip\": 5.00\n}"
+        }
+      }
+    },
+    {
+      "name": "查询订单详情",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8080/api/order/1",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "order", "1"]
+        }
+      }
+    },
+    {
+      "name": "查询订单列表-全部",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8080/api/order?page=1&size=10",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "order"],
+          "query": [
+            {"key": "page", "value": "1"},
+            {"key": "size", "value": "10"}
+          ]
+        }
+      }
+    },
+    {
+      "name": "查询订单列表-按状态筛选",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8080/api/order?page=1&size=10&status=PENDING",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "order"],
+          "query": [
+            {"key": "page", "value": "1"},
+            {"key": "size", "value": "10"},
+            {"key": "status", "value": "PENDING"}
+          ]
+        }
+      }
+    },
+    {
+      "name": "查询订单列表-按发布者筛选",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8080/api/order?page=1&size=10&publisherId=1",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "order"],
+          "query": [
+            {"key": "page", "value": "1"},
+            {"key": "size", "value": "10"},
+            {"key": "publisherId", "value": "1"}
+          ]
+        }
+      }
+    },
+    {
+      "name": "跑腿员接单",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/order/1/accept",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "order", "1", "accept"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"runnerId\": 2\n}"
+        }
+      }
+    },
+    {
+      "name": "开始配送",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/order/1/deliver",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "order", "1", "deliver"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"runnerId\": 2\n}"
+        }
+      }
+    },
+    {
+      "name": "完成订单",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/order/1/complete",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "order", "1", "complete"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"runnerId\": 2\n}"
+        }
+      }
+    },
+    {
+      "name": "取消订单",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:8080/api/order/1/cancel",
+          "host": ["http://localhost"],
+          "port": "8080",
+          "path": ["api", "order", "1", "cancel"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": 1,\n  \"reason\": \"快递信息填写有误\"\n}"
+        }
+      }
+    }
+  ]
+}
