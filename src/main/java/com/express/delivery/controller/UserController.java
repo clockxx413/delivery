@@ -1,12 +1,12 @@
 package com.express.delivery.controller;
 
-import com.express.delivery.common.Result;
 import com.express.delivery.entity.RegisterRequest;
 import com.express.delivery.entity.User;
 import com.express.delivery.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import com.express.delivery.common.Result;
 
 /**
  * 用户控制器
