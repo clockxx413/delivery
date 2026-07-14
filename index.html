@@ -918,15 +918,16 @@ function requestWithdrawal(amount) {
   if (amount < cfg.minWithdraw) return { ok: false, msg: '最低提现金额为 ¥' + cfg.minWithdraw };
   if (amount > currentUser.balance) return { ok: false, msg: '余额不足，当前余额 ¥' + currentUser.balance.toFixed(0) };
   const withdrawals = getWithdrawals();
+  const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
   const w = {
     id: 'w' + Date.now(),
     runnerId: currentUser.id,
     amount: amount,
-    status: 'pending',
-    requestedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
-    processedAt: null,
-    processedBy: null,
-    note: '',
+    status: 'completed',
+    requestedAt: now,
+    processedAt: now,
+    processedBy: 'system',
+    note: '微信到账',
   };
   withdrawals.push(w);
   saveWithdrawals(withdrawals);
@@ -937,7 +938,7 @@ function requestWithdrawal(amount) {
   user.totalWithdrawn += amount;
   saveUsers(users);
   currentUser = user;
-  return { ok: true, msg: '提现申请已提交，等待管理员处理' };
+  return { ok: true, msg: '提现成功，金额已直接到账' };
 }
 
 function processWithdrawal(withdrawalId, action, adminId) {
@@ -2260,13 +2261,13 @@ function renderRunnerWithdraw() {
       <div class="stat-card"><div class="stat-icon purple">🔒</div><div><div class="stat-value">¥${cfg.minWithdraw}</div><div class="stat-label">最低提现额</div></div></div>
     </div>
     <div class="card" style="max-width:500px;margin-bottom:16px;">
-      <h3 style="margin-bottom:12px;">📤 申请提现</h3>
+      <h3 style="margin-bottom:12px;">立即提现</h3>
       <div class="form-row">
         <div class="form-group"><label>提现金额 (¥)</label><input type="number" id="withdrawAmount" placeholder="最低 ¥${cfg.minWithdraw}" min="${cfg.minWithdraw}" max="${currentUser.balance}"></div>
       </div>
       <div class="error-msg" id="withdrawError"></div>
       <button class="btn btn-warning btn-block" onclick="submitWithdraw()" ${currentUser.balance < cfg.minWithdraw ? 'disabled' : ''}>
-        💳 申请提现（最低 ¥${cfg.minWithdraw}）
+        💳 立即提现（最低 ¥${cfg.minWithdraw}）
       </button>
     </div>
     <div class="card">
