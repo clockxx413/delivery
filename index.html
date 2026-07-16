@@ -248,7 +248,6 @@
         .btn-lg {
             padding: 14px 28px;
             font-size: 15px;
-            border-radius: 10px;
         }
 
         .btn-block {
@@ -343,9 +342,7 @@
                 color: var(--text);
             }
 
-            .form-group input,
-            .form-group select,
-            .form-group textarea {
+            .form-group input, .form-group select, .form-group textarea {
                 width: 100%;
                 padding: 10px 14px;
                 border: 1.5px solid var(--border);
@@ -357,12 +354,10 @@
                 color: var(--text);
             }
 
-                .form-group input:focus,
-                .form-group select:focus,
-                .form-group textarea:focus {
+                .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
                     outline: none;
                     border-color: var(--primary);
-                    box-shadow: 0 0 0 3px rgba(79, 110, 247, .1);
+                    box-shadow: 0 0 0 3px rgba(79,110,247,.1);
                     background: #fff;
                 }
 
@@ -722,7 +717,7 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, .45);
+            background: rgba(0,0,0,.45);
             z-index: 200;
             align-items: center;
             justify-content: center;
@@ -927,7 +922,7 @@
             .timeline-dot.current {
                 background: var(--primary);
                 color: #fff;
-                box-shadow: 0 0 0 4px rgba(79, 110, 247, .2);
+                box-shadow: 0 0 0 4px rgba(79,110,247,.2);
             }
 
         .timeline-label {
@@ -1109,6 +1104,7 @@
                 background: var(--text-muted);
             }
 
+        /* quick action cards on user home */
         .quick-actions {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -1148,6 +1144,9 @@
                 color: var(--text-secondary);
             }
 
+        /* ============================================================
+        SEARCH BAR
+        ============================================================ */
         .search-bar {
             display: flex;
             align-items: center;
@@ -1162,7 +1161,7 @@
 
             .search-bar:focus-within {
                 border-color: var(--primary);
-                box-shadow: 0 0 0 3px rgba(79, 110, 247, .1);
+                box-shadow: 0 0 0 3px rgba(79,110,247,.1);
             }
 
         .search-icon {
@@ -1199,6 +1198,39 @@
                 color: var(--text);
             }
 
+        /* ============================================================
+        SETTINGS & STATS
+        ============================================================ */
+        .progress-bar {
+            flex: 1;
+            height: 18px;
+            background: var(--bg);
+            border-radius: 9px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 9px;
+            transition: width .3s;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .stat-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ============================================================
+        WITHDRAWAL / APPLICATION CARDS
+        ============================================================ */
         .info-banner {
             padding: 12px 16px;
             border-radius: var(--radius-sm);
@@ -1224,19 +1256,6 @@
                 color: #065F46;
                 border: 1px solid #A7F3D0;
             }
-
-        .stat-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-
-        @media (max-width: 768px) {
-            .stat-grid {
-                grid-template-columns: 1fr;
-            }
-        }
     </style>
 </head>
 <body>
@@ -1282,551 +1301,634 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        'use strict';
+'use strict';
 
-        // ============================================================
-        // BACKEND API 配置
-        // ============================================================
-        const API_BASE = 'http://localhost:8080/api';
+// ============================================================
+// BACKEND API 配置
+// ============================================================
+const API_BASE = 'http://localhost:8080/api';
 
-        let _ordersCache = [];
-        let _ordersCacheTime = 0;
+async function apiRequest(url, options = {}) {
+    const res = await fetch(API_BASE + url, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options,
+        body: options.body ? JSON.stringify(options.body) : undefined
+    });
+    const data = await res.json();
+    if (data.code !== 200) {
+        throw new Error(data.message || '请求失败');
+    }
+    return data.data;
+}
 
-        async function apiRequest(url, options = {}) {
-            const res = await fetch(API_BASE + url, {
-                headers: { 'Content-Type': 'application/json' },
-                ...options,
-                body: options.body ? JSON.stringify(options.body) : undefined
-            });
-            const data = await res.json();
-            if (data.code !== 200) {
-                throw new Error(data.message || '请求失败');
-            }
-            return data.data;
+// ============================================================
+// DATA LAYER
+// ============================================================
+const LS = {
+  get(key) { try { return JSON.parse(localStorage.getItem(key)); } catch(e) { return null; } },
+  set(key, val) { localStorage.setItem(key, JSON.stringify(val)); },
+};
+
+function loadUsers() { return LS.get('dlv_users') || []; }
+function saveUsers(u) { LS.set('dlv_users', u); }
+function loadOrders() { return LS.get('dlv_orders') || []; }
+function saveOrders(o) { LS.set('dlv_orders', o); }
+function loadSession() { return LS.get('dlv_session') || null; }
+function saveSession(s) { LS.set('dlv_session', s); }
+function loadWithdrawals() { return LS.get('dlv_withdrawals') || []; }
+function saveWithdrawals(w) { LS.set('dlv_withdrawals', w); }
+function loadViolations() { return LS.get('dlv_violations') || []; }
+function saveViolations(v) { LS.set('dlv_violations', v); }
+function loadConfig() { return LS.get('dlv_config') || { platformFeeRate: 20, minWithdraw: 10 }; }
+function saveConfig(c) { LS.set('dlv_config', c); }
+
+// ============================================================
+// SEED DATA
+// ============================================================
+const PICKUP_POINTS = [
+  { name: '快递服务中心', detail: '学校正门西侧 快递服务中心大厅 2号窗口' },
+  { name: '一期综合楼快递站', detail: '一期综合楼一层 快递驿站 B区' },
+];
+
+const DELIVERY_POINTS = [
+  '国光1 101室', '国光1 203室', '国光2 305室', '国光3 112室', '国光4 408室',
+  '国光5 201室', '国光6 310室', '国光7 105室', '国光8 502室', '国光9 207室',
+  '国光10 313室', '国光11 109室', '国光12 404室', '国光13 206室', '国光14 501室', '国光15 308室',
+  '芙蓉1 102室', '芙蓉2 205室', '芙蓉3 310室', '芙蓉4 108室', '芙蓉5 403室',
+  '芙蓉6 201室', '芙蓉7 304室', '芙蓉8 107室',
+];
+
+const SEED_USERS = [
+  { id: 'u1', name: '张三', phone: '13800000001', password: '123456', role: 'user', avatar: '张', status: 'active', createdAt: '2026-06-01', studentId: '2024001001', balance: 0, totalEarned: 0, totalWithdrawn: 0, runnerApplication: null },
+  { id: 'u2', name: '李四', phone: '13800000002', password: '123456', role: 'user', avatar: '李', status: 'active', createdAt: '2026-06-02', studentId: '2024001002', balance: 0, totalEarned: 0, totalWithdrawn: 0, runnerApplication: null },
+  { id: 'u3', name: '王五', phone: '13800000003', password: '123456', role: 'user', avatar: '王', status: 'active', createdAt: '2026-06-03', studentId: '2024001003', balance: 0, totalEarned: 0, totalWithdrawn: 0, runnerApplication: { status: 'pending', appliedAt: '2026-07-05', reason: '课余时间多，想赚点生活费' } },
+  { id: 'r1', name: '李小明', phone: '13900000001', password: '123456', role: 'runner', avatar: '李', status: 'active', createdAt: '2026-06-01', studentId: '2023002001', balance: 28, totalEarned: 35, totalWithdrawn: 7, runnerApplication: { status: 'approved', appliedAt: '2026-05-20', reviewedAt: '2026-05-21', reviewedBy: 'a1' } },
+  { id: 'r2', name: '王大强', phone: '13900000002', password: '123456', role: 'runner', avatar: '王', status: 'active', createdAt: '2026-06-05', studentId: '2023002002', balance: 14, totalEarned: 14, totalWithdrawn: 0, runnerApplication: { status: 'approved', appliedAt: '2026-06-01', reviewedAt: '2026-06-02', reviewedBy: 'a1' } },
+  { id: 'r3', name: '陈飞', phone: '13900000003', password: '123456', role: 'runner', avatar: '陈', status: 'active', createdAt: '2026-06-10', studentId: '2023002003', balance: 0, totalEarned: 0, totalWithdrawn: 0, runnerApplication: { status: 'approved', appliedAt: '2026-06-08', reviewedAt: '2026-06-09', reviewedBy: 'a1' } },
+  { id: 'u4', name: '赵六', phone: '13800000004', password: '123456', role: 'user', avatar: '赵', status: 'active', createdAt: '2026-07-01', studentId: '2024002001', balance: 0, totalEarned: 0, totalWithdrawn: 0, runnerApplication: null },
+  { id: 'a1', name: '管理员', phone: '18800000001', password: 'admin', role: 'admin', avatar: '管', status: 'active', createdAt: '2026-05-01', studentId: 'admin001', balance: 0, totalEarned: 0, totalWithdrawn: 0, runnerApplication: null },
+];
+
+const SEED_ORDERS = [
+  { id: 'DD20260706001', userId: 'u1', runnerId: null, pickup: '快递服务中心', pickupDetail: '学校正门西侧 快递服务中心大厅 2号窗口', delivery: '国光3', deliveryDetail: '国光3 112室', recipient: '张三', recipientPhone: '138****6789', packageType: '小件', packageDesc: '数码配件（手机壳）', weight: '0.3kg', price: 5, fee: 1.0, status: 'pending', notes: '放门口即可', deadline: '2026-07-06 18:00', createdAt: '2026-07-06 09:30', acceptedAt: null, pickedUpAt: null, deliveringAt: null, deliveredAt: null, rating: 0, ratingComment: '', violation: null },
+  { id: 'DD20260706002', userId: 'u2', runnerId: null, pickup: '一期综合楼快递站', pickupDetail: '一期综合楼一层 快递驿站 B区', delivery: '芙蓉2', deliveryDetail: '芙蓉2 205室', recipient: '李四', recipientPhone: '139****2345', packageType: '中件', packageDesc: '书籍（3本）', weight: '2.5kg', price: 8, fee: 1.6, status: 'pending', notes: '需本人签收', deadline: '2026-07-06 20:00', createdAt: '2026-07-06 10:00', acceptedAt: null, pickedUpAt: null, deliveringAt: null, deliveredAt: null, rating: 0, ratingComment: '', violation: null },
+  { id: 'DD20260706003', userId: 'u3', runnerId: null, pickup: '快递服务中心', pickupDetail: '学校正门西侧 快递服务中心大厅 2号窗口', delivery: '国光8', deliveryDetail: '国光8 502室', recipient: '王老师', recipientPhone: '136****7890', packageType: '大件', packageDesc: '家用电器（加湿器）', weight: '4.2kg', price: 12, fee: 2.4, status: 'pending', notes: '先电话联系，下午3点后在家', deadline: '2026-07-06 17:00', createdAt: '2026-07-06 08:15', acceptedAt: null, pickedUpAt: null, deliveringAt: null, deliveredAt: null, rating: 0, ratingComment: '', violation: null },
+  { id: 'DD20260706004', userId: 'u1', runnerId: null, pickup: '一期综合楼快递站', pickupDetail: '一期综合楼一层 快递驿站 B区', delivery: '芙蓉5', deliveryDetail: '芙蓉5 403室', recipient: '赵六', recipientPhone: '137****4567', packageType: '小件', packageDesc: '零食包裹', weight: '0.8kg', price: 5, fee: 1.0, status: 'pending', notes: '', deadline: '2026-07-06 19:00', createdAt: '2026-07-06 11:00', acceptedAt: null, pickedUpAt: null, deliveringAt: null, deliveredAt: null, rating: 0, ratingComment: '', violation: null },
+  { id: 'DD20260706005', userId: 'u2', runnerId: null, pickup: '快递服务中心', pickupDetail: '学校正门西侧 快递服务中心大厅 2号窗口', delivery: '国光12', deliveryDetail: '国光12 404室', recipient: '钱七', recipientPhone: '135****8901', packageType: '急件', packageDesc: '药品（需冷藏）', weight: '0.5kg', price: 15, fee: 3.0, status: 'pending', notes: '急需！请尽快送达，冷藏保存', deadline: '2026-07-06 14:00', createdAt: '2026-07-06 12:00', acceptedAt: null, pickedUpAt: null, deliveringAt: null, deliveredAt: null, rating: 0, ratingComment: '', violation: null },
+  { id: 'DD20260705006', userId: 'u3', runnerId: 'r1', pickup: '快递服务中心', pickupDetail: '学校正门西侧 快递服务中心大厅', delivery: '国光1', deliveryDetail: '国光1 203室', recipient: '孙八', recipientPhone: '134****0123', packageType: '中件', packageDesc: '运动鞋一双', weight: '1.2kg', price: 7, fee: 1.4, status: 'accepted', notes: '', deadline: '2026-07-06 18:00', createdAt: '2026-07-05 16:00', acceptedAt: '2026-07-05 17:00', pickedUpAt: null, deliveringAt: null, deliveredAt: null, rating: 0, ratingComment: '', violation: null },
+  { id: 'DD20260705007', userId: 'u1', runnerId: 'r1', pickup: '一期综合楼快递站', pickupDetail: '一期综合楼一层 快递驿站 B区', delivery: '芙蓉1', deliveryDetail: '芙蓉1 102室', recipient: '周九', recipientPhone: '133****3456', packageType: '小件', packageDesc: '文件资料', weight: '0.2kg', price: 5, fee: 1.0, status: 'picked_up', notes: '放快递架即可', deadline: '2026-07-06 17:00', createdAt: '2026-07-05 14:00', acceptedAt: '2026-07-05 15:00', pickedUpAt: '2026-07-05 16:30', deliveringAt: null, deliveredAt: null, rating: 0, ratingComment: '', violation: null },
+  { id: 'DD20260705008', userId: 'u2', runnerId: 'r2', pickup: '快递服务中心', pickupDetail: '学校正门西侧 快递服务中心大厅', delivery: '国光6', deliveryDetail: '国光6 310室', recipient: '留学生Tom', recipientPhone: '132****5678', packageType: '中件', packageDesc: '衣物包裹', weight: '1.8kg', price: 8, fee: 1.6, status: 'delivering', notes: '到之前发短信', deadline: '2026-07-06 16:00', createdAt: '2026-07-05 10:00', acceptedAt: '2026-07-05 11:00', pickedUpAt: '2026-07-05 13:00', deliveringAt: '2026-07-05 14:00', deliveredAt: null, rating: 0, ratingComment: '', violation: null },
+  { id: 'DD20260704009', userId: 'u1', runnerId: 'r1', pickup: '快递服务中心', pickupDetail: '学校正门西侧 快递服务中心大厅', delivery: '国光14', deliveryDetail: '国光14 501室', recipient: '吴十', recipientPhone: '131****7890', packageType: '小件', packageDesc: '日用品', weight: '0.6kg', price: 5, fee: 1.0, status: 'delivered', notes: '', deadline: '2026-07-04 18:00', createdAt: '2026-07-04 09:00', acceptedAt: '2026-07-04 10:00', pickedUpAt: '2026-07-04 11:00', deliveringAt: '2026-07-04 11:30', deliveredAt: '2026-07-04 12:10', rating: 0, ratingComment: '', violation: null },
+  { id: 'DD20260704010', userId: 'u3', runnerId: 'r2', pickup: '一期综合楼快递站', pickupDetail: '一期综合楼一层 快递驿站 B区', delivery: '芙蓉8', deliveryDetail: '芙蓉8 107室', recipient: '郑十一', recipientPhone: '130****3456', packageType: '小件', packageDesc: '化妆品', weight: '0.4kg', price: 6, fee: 1.2, status: 'rated', notes: '', deadline: '2026-07-04 19:00', createdAt: '2026-07-04 08:00', acceptedAt: '2026-07-04 09:00', pickedUpAt: '2026-07-04 09:40', deliveringAt: '2026-07-04 10:00', deliveredAt: '2026-07-04 10:30', rating: 5, ratingComment: '送得很快，态度好！', violation: null },
+  { id: 'DD20260703011', userId: 'u2', runnerId: 'r1', pickup: '快递服务中心', pickupDetail: '学校正门西侧 快递服务中心大厅', delivery: '国光15', deliveryDetail: '国光15 308室', recipient: '孙十二', recipientPhone: '129****5678', packageType: '大件', packageDesc: '论文资料（厚厚一摞）', weight: '5.0kg', price: 10, fee: 2.0, status: 'rated', notes: '请小心搬运，资料很重要', deadline: '2026-07-03 17:00', createdAt: '2026-07-03 10:00', acceptedAt: '2026-07-03 10:30', pickedUpAt: '2026-07-03 11:00', deliveringAt: '2026-07-03 11:20', deliveredAt: '2026-07-03 12:00', rating: 4, ratingComment: '还不错，稍微慢了一点', violation: null },
+];
+
+const SEED_WITHDRAWALS = [
+  { id: 'w1', runnerId: 'r1', amount: 7, status: 'completed', requestedAt: '2026-07-01 10:00', processedAt: '2026-07-01 15:00', processedBy: 'a1', note: '微信到账' },
+];
+
+const SEED_VIOLATIONS = [];
+
+function seedData() {
+  if (!LS.get('dlv_seeded_v3')) {
+    saveUsers(SEED_USERS);
+    saveOrders(SEED_ORDERS);
+    saveWithdrawals(SEED_WITHDRAWALS);
+    saveViolations(SEED_VIOLATIONS);
+    saveConfig({ platformFeeRate: 20, minWithdraw: 10 });
+    LS.set('dlv_seeded_v3', true);
+    LS.set('dlv_seeded', true);
+  }
+}
+
+// ============================================================
+// AUTH & SESSION
+// ============================================================
+let currentUser = null;
+
+function getUsers() { return loadUsers(); }
+function getOrders() { return loadOrders(); }
+function getWithdrawals() { return loadWithdrawals(); }
+function getViolations() { return loadViolations(); }
+function getConfig() { return loadConfig(); }
+
+async function loadOrdersFromBackend() {
+    if (!currentUser) return;
+    try {
+        let url;
+        // 根据角色决定请求参数
+        if (currentUser.role === 'runner') {
+            // 跑腿员：查看所有待接订单（userId=0, role=all）
+            url = '/order/list?userId=0&role=all';
+        } else if (currentUser.role === 'admin') {
+            // 管理员：查看所有订单
+            url = '/order/list?userId=0&role=all';
+        } else {
+            // 普通用户：只看自己的订单
+            url = '/order/list?userId=' + currentUser.id + '&role=' + currentUser.role;
         }
 
-        // ============================================================
-        // DATA LAYER
-        // ============================================================
-        const LS = {
-            get(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } },
-            set(key, val) { localStorage.setItem(key, JSON.stringify(val)); },
-        };
-
-        function loadUsers() { return LS.get('dlv_users') || []; }
-
-        function saveUsers(u) { LS.set('dlv_users', u); }
-
-        function loadOrders() { return _ordersCache; }
-
-        function saveOrders(o) { /* 由后端管理 */ }
-
-        function loadSession() { return LS.get('dlv_session') || null; }
-
-        function saveSession(s) { LS.set('dlv_session', s); }
-
-        function loadWithdrawals() { return LS.get('dlv_withdrawals') || []; }
-
-        function saveWithdrawals(w) { LS.set('dlv_withdrawals', w); }
-
-        function loadViolations() { return LS.get('dlv_violations') || []; }
-
-        function saveViolations(v) { LS.set('dlv_violations', v); }
-
-        function loadConfig() { return LS.get('dlv_config') || { platformFeeRate: 20, minWithdraw: 10 }; }
-
-        function saveConfig(c) { LS.set('dlv_config', c); }
-
-        // ============================================================
-        // SEED DATA
-        // ============================================================
-        const PICKUP_POINTS = [
-            { name: '快递服务中心', detail: '学校正门西侧 快递服务中心大厅 2号窗口' },
-            { name: '一期综合楼快递站', detail: '一期综合楼一层 快递驿站 B区' },
-        ];
-
-        const DELIVERY_POINTS = [
-            '国光1 101室', '国光1 203室', '国光2 305室', '国光3 112室', '国光4 408室',
-            '国光5 201室', '国光6 310室', '国光7 105室', '国光8 502室', '国光9 207室',
-            '国光10 313室', '国光11 109室', '国光12 404室', '国光13 206室', '国光14 501室', '国光15 308室',
-            '芙蓉1 102室', '芙蓉2 205室', '芙蓉3 310室', '芙蓉4 108室', '芙蓉5 403室',
-            '芙蓉6 201室', '芙蓉7 304室', '芙蓉8 107室',
-        ];
-
-        const SEED_USERS = [
-            { id: 'u1', name: '张三', phone: '13800000001', password: '123456', role: 'user', avatar: '张', status: 'active',
-                createdAt: '2026-06-01', studentId: '2024001001', balance: 0, totalEarned: 0, totalWithdrawn: 0,
-                runnerApplication: null },
-            { id: 'u2', name: '李四', phone: '13800000002', password: '123456', role: 'user', avatar: '李', status: 'active',
-                createdAt: '2026-06-02', studentId: '2024001002', balance: 0, totalEarned: 0, totalWithdrawn: 0,
-                runnerApplication: null },
-            { id: 'u3', name: '王五', phone: '13800000003', password: '123456', role: 'user', avatar: '王', status: 'active',
-                createdAt: '2026-06-03', studentId: '2024001003', balance: 0, totalEarned: 0, totalWithdrawn: 0,
-                runnerApplication: { status: 'pending', appliedAt: '2026-07-05', reason: '课余时间多，想赚点生活费' } },
-            { id: 'r1', name: '李小明', phone: '13900000001', password: '123456', role: 'runner', avatar: '李', status: 'active',
-                createdAt: '2026-06-01', studentId: '2023002001', balance: 28, totalEarned: 35, totalWithdrawn: 7,
-                runnerApplication: { status: 'approved', appliedAt: '2026-05-20', reviewedAt: '2026-05-21',
-                reviewedBy: 'a1' } },
-            { id: 'r2', name: '王大强', phone: '13900000002', password: '123456', role: 'runner', avatar: '王', status: 'active',
-                createdAt: '2026-06-05', studentId: '2023002002', balance: 14, totalEarned: 14, totalWithdrawn: 0,
-                runnerApplication: { status: 'approved', appliedAt: '2026-06-01', reviewedAt: '2026-06-02',
-                reviewedBy: 'a1' } },
-            { id: 'r3', name: '陈飞', phone: '13900000003', password: '123456', role: 'runner', avatar: '陈', status: 'active',
-                createdAt: '2026-06-10', studentId: '2023002003', balance: 0, totalEarned: 0, totalWithdrawn: 0,
-                runnerApplication: { status: 'approved', appliedAt: '2026-06-08', reviewedAt: '2026-06-09',
-                reviewedBy: 'a1' } },
-            { id: 'u4', name: '赵六', phone: '13800000004', password: '123456', role: 'user', avatar: '赵', status: 'active',
-                createdAt: '2026-07-01', studentId: '2024002001', balance: 0, totalEarned: 0, totalWithdrawn: 0,
-                runnerApplication: null },
-            { id: 'a1', name: '管理员', phone: '18800000001', password: 'admin', role: 'admin', avatar: '管', status: 'active',
-                createdAt: '2026-05-01', studentId: 'admin001', balance: 0, totalEarned: 0, totalWithdrawn: 0,
-                runnerApplication: null },
-        ];
-
-        const SEED_WITHDRAWALS = [
-            { id: 'w1', runnerId: 'r1', amount: 7, status: 'completed', requestedAt: '2026-07-01 10:00',
-                processedAt: '2026-07-01 15:00', processedBy: 'a1', note: '微信到账' },
-        ];
-
-        function seedData() {
-            if (!LS.get('dlv_seeded_v4')) {
-                saveUsers(SEED_USERS);
-                saveWithdrawals(SEED_WITHDRAWALS);
-                saveViolations([]);
-                saveConfig({ platformFeeRate: 20, minWithdraw: 10 });
-                LS.set('dlv_seeded_v4', true);
-            }
+        const data = await apiRequest(url);
+        if (data && data.length > 0) {
+            const orders = data.map(o => ({
+                id: o.id,
+                userId: o.publisherId,
+                runnerId: o.runnerId,
+                pickup: o.stationName || '快递服务中心',
+                pickupDetail: o.stationName || '',
+                delivery: o.building || '',
+                deliveryDetail: o.building || '',
+                recipient: currentUser.name,
+                recipientPhone: currentUser.phone || '',
+                packageType: '小件',
+                packageDesc: o.itemInfo || '',
+                weight: '1.0kg',
+                price: o.reward || 0,
+                fee: 0,
+                status: o.status ? o.status.toLowerCase() : 'pending',
+                notes: '',
+                deadline: o.timeoutAt ? o.timeoutAt.replace('T', ' ') : '',
+                timeoutAt: o.timeoutAt || '',
+                createdAt: o.createdAt || now(),
+                acceptedAt: null, pickedUpAt: null, deliveringAt: null, deliveredAt: null,
+                rating: o.evaluation || 0, ratingComment: o.evaluationContent || ''
+            }));
+            saveOrders(orders);
         }
+    } catch (e) {
+        console.warn('加载订单失败，使用缓存', e);
+    }
+}
 
-        // ============================================================
-        // AUTH & SESSION
-        // ============================================================
-        let currentUser = null;
+function login(studentId, password) {
+  const users = getUsers();
+  const user = users.find(u => u.studentId === studentId && u.password === password);
+  if (!user) return { ok: false, msg: '学号或密码错误' };
+  if (user.status !== 'active') return { ok: false, msg: '账号已被禁用，请联系管理员' };
+  currentUser = user;
+  saveSession({ id: user.id, role: user.role });
+  return { ok: true, user };
+}
 
-        function getUsers() { return loadUsers(); }
+function register(name, studentId, phone, password, role) {
+  const users = getUsers();
+  if (users.find(u => u.studentId === studentId)) return { ok: false, msg: '该学号已注册' };
+  if (phone && users.find(u => u.phone === phone)) return { ok: false, msg: '该手机号已注册' };
+  const isRunnerApply = role === 'runner';
+  const runnerApp = isRunnerApply
+    ? { status: 'pending', appliedAt: new Date().toISOString().slice(0, 10), reason: '' }
+    : null;
+  const newUser = {
+    id: 'u' + Date.now(),
+    name, phone: phone || '', password,
+    role: isRunnerApply ? 'user' : role,
+    avatar: name.charAt(0),
+    status: 'active',
+    createdAt: new Date().toISOString().slice(0, 10),
+    studentId,
+    balance: 0, totalEarned: 0, totalWithdrawn: 0,
+    runnerApplication: runnerApp,
+  };
+  users.push(newUser);
+  saveUsers(users);
+  currentUser = newUser;
+  saveSession({ id: newUser.id, role: newUser.role });
+  return { ok: true, user: newUser };
+}
 
-        function getOrders() { return _ordersCache; }
+function applyForRunner(reason) {
+  if (!currentUser || currentUser.role !== 'user') return { ok: false, msg: '仅普通用户可申请' };
+  if (currentUser.runnerApplication) {
+    if (currentUser.runnerApplication.status === 'pending') return { ok: false, msg: '申请审核中，请耐心等待' };
+    if (currentUser.runnerApplication.status === 'approved') return { ok: false, msg: '您已是跑腿员' };
+  }
+  const users = getUsers();
+  const user = users.find(u => u.id === currentUser.id);
+  user.runnerApplication = { status: 'pending', appliedAt: new Date().toISOString().slice(0, 10), reason: reason || '' };
+  saveUsers(users);
+  currentUser = user;
+  return { ok: true, msg: '申请已提交，等待管理员审核' };
+}
 
-        function getWithdrawals() { return loadWithdrawals(); }
+function logout() {
+  currentUser = null;
+  saveSession(null);
+  switchView('login');
+}
 
-        function getViolations() { return loadViolations(); }
+function restoreSession() {
+  const session = loadSession();
+  if (!session) return false;
+  const users = getUsers();
+  const user = users.find(u => u.id === session.id && u.role === session.role);
+  if (!user || user.status !== 'active') { saveSession(null); return false; }
+  currentUser = user;
+  return true;
+}
 
-        function getConfig() { return loadConfig(); }
+function requestWithdrawal(amount) {
+    const role = currentUser ? currentUser.role.toLowerCase() : '';
+    if (!currentUser || role !== 'runner') {
+        showToast('仅跑腿员可提现，当前角色：' + currentUser.role);
+        return;
+    }
 
-        // 从后端加载订单
-        async function loadOrdersFromBackend() {
-            if (!currentUser) return;
-            try {
-                const data = await apiRequest('/order/list?userId=' + currentUser.id + '&role=' + currentUser.role);
-                _ordersCache = data || [];
-                _ordersCacheTime = Date.now();
-            } catch (e) {
-                console.warn('加载订单失败，使用缓存', e);
-            }
-        }
+    if (amount <= 0) {
+        showToast('请输入有效的提现金额');
+        return;
+    }
 
-        async function refreshOrders() {
-            await loadOrdersFromBackend();
-        }
+    if (amount > currentUser.balance) {
+        showToast('余额不足，当前余额 ¥' + currentUser.balance.toFixed(0));
+        return;
+    }
 
-        function login(studentId, password) {
-            const users = getUsers();
-            const user = users.find(u => u.studentId === studentId && u.password === password);
-            if (!user) return { ok: false, msg: '学号或密码错误' };
-            if (user.status !== 'active') return { ok: false, msg: '账号已被禁用，请联系管理员' };
-            currentUser = user;
-            saveSession({ id: user.id, role: user.role });
-            return { ok: true, user };
-        }
+    const users = getUsers();
+    const user = users.find(u => u.id === currentUser.id);
+    if (!user) {
+        showToast('用户不存在');
+        return;
+    }
 
-        function register(name, studentId, phone, password, role) {
-            const users = getUsers();
-            if (users.find(u => u.studentId === studentId)) return { ok: false, msg: '该学号已注册' };
-            if (phone && users.find(u => u.phone === phone)) return { ok: false, msg: '该手机号已注册' };
-            const isRunnerApply = role === 'runner';
-            const runnerApp = isRunnerApply ?
-                { status: 'pending', appliedAt: new Date().toISOString().slice(0, 10), reason: '' } :
-                null;
-            const newUser = {
-                id: 'u' + Date.now(),
-                name,
-                phone: phone || '',
-                password,
-                role: isRunnerApply ? 'user' : role,
-                avatar: name.charAt(0),
-                status: 'active',
-                createdAt: new Date().toISOString().slice(0, 10),
-                studentId,
-                balance: 0,
-                totalEarned: 0,
-                totalWithdrawn: 0,
-                runnerApplication: runnerApp,
-            };
-            users.push(newUser);
-            saveUsers(users);
-            currentUser = newUser;
-            saveSession({ id: newUser.id, role: newUser.role });
-            return { ok: true, user: newUser };
-        }
+    user.balance = (user.balance || 0) - amount;
+    user.totalWithdrawn = (user.totalWithdrawn || 0) + amount;
+    saveUsers(users);
+    currentUser = user;
 
-        function applyForRunner(reason) {
-            if (!currentUser || currentUser.role !== 'user') return { ok: false, msg: '仅普通用户可申请' };
-            if (currentUser.runnerApplication) {
-                if (currentUser.runnerApplication.status === 'pending') return { ok: false, msg: '申请审核中，请耐心等待' };
-                if (currentUser.runnerApplication.status === 'approved') return { ok: false, msg: '您已是跑腿员' };
-            }
-            const users = getUsers();
-            const user = users.find(u => u.id === currentUser.id);
-            user.runnerApplication = { status: 'pending', appliedAt: new Date().toISOString().slice(0, 10),
-            reason: reason || '' };
-            saveUsers(users);
-            currentUser = user;
-            return { ok: true, msg: '申请已提交，等待管理员审核' };
-        }
+    const withdrawals = getWithdrawals();
+    withdrawals.push({
+        id: 'w' + Date.now(),
+        runnerId: currentUser.id,
+        amount: amount,
+        status: 'completed',
+        requestedAt: now(),
+        processedAt: now(),
+        note: '自动到账'
+    });
+    saveWithdrawals(withdrawals);
 
-        function logout() {
-            currentUser = null;
-            saveSession(null);
-            switchView('login');
-        }
+    showToast('✅ 提现成功！¥' + amount + ' 已到账');
+    renderRunnerWithdraw();
+    renderRunnerEarnings();
+}
 
-        async function restoreSession() {
-            const session = loadSession();
-            if (!session) return false;
-            const users = getUsers();
-            const user = users.find(u => u.id === session.id && u.role === session.role);
-            if (!user || user.status !== 'active') { saveSession(null); return false; }
-            currentUser = user;
-            await loadOrdersFromBackend();
-            return true;
-        }
+function processWithdrawal(withdrawalId, action, adminId) {
+  const withdrawals = getWithdrawals();
+  const w = withdrawals.find(w => w.id === withdrawalId);
+  if (!w) return { ok: false, msg: '记录不存在' };
+  if (action === 'complete') {
+    w.status = 'completed';
+    w.processedAt = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    w.processedBy = adminId;
+    w.note = '已打款';
+  } else if (action === 'reject') {
+    w.status = 'rejected';
+    w.processedAt = new Date().toISOString().slice(0, 16).replace('T', ' ');
+    w.processedBy = adminId;
+    const users = getUsers();
+    const user = users.find(u => u.id === w.runnerId);
+    if (user) {
+      user.balance += w.amount;
+      user.totalWithdrawn -= w.amount;
+      saveUsers(users);
+      if (currentUser && currentUser.id === user.id) currentUser = user;
+    }
+  }
+  saveWithdrawals(withdrawals);
+  return { ok: true };
+}
 
-        function requestWithdrawal(amount) {
-            if (!currentUser || currentUser.role !== 'runner') return { ok: false, msg: '仅跑腿员可提现' };
-            const cfg = getConfig();
-            if (amount < cfg.minWithdraw) return { ok: false, msg: '最低提现金额为 ¥' + cfg.minWithdraw };
-            if (amount > currentUser.balance) return { ok: false, msg: '余额不足，当前余额 ¥' + currentUser.balance.toFixed(0) };
-            const withdrawals = getWithdrawals();
-            const w = {
-                id: 'w' + Date.now(),
-                runnerId: currentUser.id,
-                amount: amount,
-                status: 'pending',
-                requestedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
-                processedAt: null,
-                processedBy: null,
-                note: '',
-            };
-            withdrawals.push(w);
-            saveWithdrawals(withdrawals);
-            const users = getUsers();
-            const user = users.find(u => u.id === currentUser.id);
-            user.balance -= amount;
-            user.totalWithdrawn += amount;
-            saveUsers(users);
-            currentUser = user;
-            return { ok: true, msg: '提现申请已提交，等待管理员处理' };
-        }
+// ============================================================
+// VIOLATION - 修复版（同步取消订单）
+// ============================================================
+async function reportViolation(orderId, reason, action) {
+  // 1. 保存违规记录到本地
+  const violations = getViolations();
+  violations.push({
+    id: 'v' + Date.now(),
+    orderId: orderId,
+    reportedBy: currentUser ? currentUser.id : 'system',
+    reason: reason,
+    action: action,
+    createdAt: new Date().toISOString().slice(0, 16).replace('T', ' ')
+  });
+  saveViolations(violations);
 
-        function processWithdrawal(withdrawalId, action, adminId) {
-            const withdrawals = getWithdrawals();
-            const w = withdrawals.find(w => w.id === withdrawalId);
-            if (!w) return { ok: false, msg: '记录不存在' };
-            if (action === 'complete') {
-                w.status = 'completed';
-                w.processedAt = new Date().toISOString().slice(0, 16).replace('T', ' ');
-                w.processedBy = adminId;
-                w.note = '已打款';
-            } else if (action === 'reject') {
-                w.status = 'rejected';
-                w.processedAt = new Date().toISOString().slice(0, 16).replace('T', ' ');
-                w.processedBy = adminId;
-                const users = getUsers();
-                const user = users.find(u => u.id === w.runnerId);
-                if (user) {
-                    user.balance += w.amount;
-                    user.totalWithdrawn -= w.amount;
-                    saveUsers(users);
-                    if (currentUser && currentUser.id === user.id) currentUser = user;
-                }
-            }
-            saveWithdrawals(withdrawals);
-            return { ok: true };
-        }
+  // 2. 如果是强制取消，更新订单状态（本地 + 后端）
+  if (action === 'cancel') {
+    const orders = getOrders();
+    const orderIndex = orders.findIndex(o => String(o.id) === String(orderId));
 
-        function reportViolation(orderId, reason, action) {
-            const violations = getViolations();
-            violations.push({
-                id: 'v' + Date.now(),
-                orderId: orderId,
-                reportedBy: currentUser ? currentUser.id : 'system',
-                reason: reason,
-                action: action,
-                createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
-            });
-            saveViolations(violations);
-            return { ok: true };
-        }
+    if (orderIndex === -1) {
+      showToast('❌ 订单 ' + orderId + ' 不存在');
+      return;
+    }
 
-        // ============================================================
-        // ROUTING
-        // ============================================================
-        let currentView = '';
+    const order = orders[orderIndex];
 
-        function switchView(view) {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            const el = document.getElementById('view-' + view);
-            if (el) el.classList.add('active');
-            currentView = view;
-            renderNavbar();
-            renderView(view);
-            window.scrollTo(0, 0);
-        }
+    // 只有未完成、未取消的订单才能被强制取消
+    if (!['delivered', 'rated', 'cancelled'].includes(order.status)) {
+      // 更新本地状态
+      order.status = 'cancelled';
+      order.cancelledAt = now();
+      order.cancelReason = reason || '管理员强制取消';
+      saveOrders(orders);
 
-        function goHome() {
-            if (!currentUser) { switchView('login'); return; }
-            const roleMap = { user: 'userHome', runner: 'runnerHall', admin: 'adminDashboard' };
-            const roleKey = currentUser.role.toLowerCase();
-            const view = roleMap[roleKey] || 'login';
-            switchView(view);
-        }
-
-        function renderView(view) {
-            switch (view) {
-                case 'login':
-                    renderLogin();
-                    break;
-                case 'userHome':
-                    renderUserHome();
-                    break;
-                case 'userOrders':
-                    renderUserOrders();
-                    break;
-                case 'runnerHall':
-                    renderRunnerHall();
-                    break;
-                case 'runnerDeliveries':
-                    renderRunnerDeliveries();
-                    break;
-                case 'runnerApply':
-                    renderRunnerApply();
-                    break;
-                case 'runnerEarnings':
-                    renderRunnerEarnings();
-                    break;
-                case 'runnerWithdraw':
-                    renderRunnerWithdraw();
-                    break;
-                case 'adminDashboard':
-                    renderAdminDashboard();
-                    break;
-                case 'adminUsers':
-                    renderAdminUsers();
-                    break;
-                case 'adminOrders':
-                    renderAdminOrders();
-                    break;
-                case 'adminRunners':
-                    renderAdminRunners();
-                    break;
-                case 'adminViolations':
-                    renderAdminViolations();
-                    break;
-                case 'adminSettings':
-                    renderAdminSettings();
-                    break;
-                case 'adminStats':
-                    renderAdminStats();
-                    break;
-            }
-        }
-
-        function renderNavbar() {
-            const nav = document.getElementById('navbarNav');
-            const userEl = document.getElementById('navbarUser');
-            if (!currentUser) {
-                nav.innerHTML = '';
-                userEl.innerHTML = '<button class="btn btn-primary btn-sm" onclick="switchView(\'login\')">登录</button>';
-                return;
-            }
-            const u = currentUser;
-            const roleMap = { user: '用户', runner: '跑腿', admin: '管理' };
-            userEl.innerHTML = `
-    <div class="avatar">${u.avatar}</div>
-    <span class="user-name">${u.name}</span>
-    <span class="user-role ${u.role}">${roleMap[u.role]}</span>
-    <button class="btn btn-ghost btn-sm" onclick="logout()" style="margin-left:4px;">退出</button>
-  `;
-            let navHTML = '';
-            if (u.role === 'user') {
-                navHTML = `
-      <button class="${currentView === 'userHome' ? 'active' : ''}" onclick="switchView('userHome')">🏠 首页</button>
-      <button class="${currentView === 'userOrders' ? 'active' : ''}" onclick="switchView('userOrders')">📋 我的订单</button>
-      ${!u.runnerApplication || u.runnerApplication.status === 'rejected'
-        ? `<button class="${currentView === 'runnerApply' ? 'active' : ''}" onclick="switchView('runnerApply')" style="color:var(--warning);">🎯 申请跑腿</button>`
-        : u.runnerApplication.status === 'pending'
-        ? '<span style="font-size:11px;color:var(--text-muted);padding:8px;">⏳ 跑腿审核中</span>'
-        : ''}
-    `;
-            } else if (u.role === 'runner') {
-                const pendingCount = getOrders().filter(o => o.status === 'pending').length;
-                const myActive = getOrders().filter(o => o.runnerId === u.id && !['delivered', 'confirmed', 'rated']
-                    .includes(o.status)).length;
-                navHTML = `
-      <button class="${currentView === 'runnerHall' ? 'active' : ''}" onclick="switchView('runnerHall')">📋 订单大厅 ${pendingCount ? '<b style="color:var(--danger)">' + pendingCount + '</b>' : ''}</button>
-      <button class="${currentView === 'runnerDeliveries' ? 'active' : ''}" onclick="switchView('runnerDeliveries')">🏃 我的配送 ${myActive ? '<b style="color:var(--warning)">' + myActive + '</b>' : ''}</button>
-      <button class="${currentView === 'runnerEarnings' ? 'active' : ''}" onclick="switchView('runnerEarnings')">💰 收入</button>
-      <button class="${currentView === 'runnerWithdraw' ? 'active' : ''}" onclick="switchView('runnerWithdraw')">💳 提现</button>
-    `;
-            } else if (u.role === 'admin') {
-                navHTML = `
-      <button class="${currentView === 'adminDashboard' ? 'active' : ''}" onclick="switchView('adminDashboard')">📊 仪表盘</button>
-      <button class="${currentView === 'adminUsers' ? 'active' : ''}" onclick="switchView('adminUsers')">👥 用户</button>
-      <button class="${currentView === 'adminRunners' ? 'active' : ''}" onclick="switchView('adminRunners')">🏃 跑腿</button>
-      <button class="${currentView === 'adminOrders' ? 'active' : ''}" onclick="switchView('adminOrders')">📦 订单</button>
-      <button class="${currentView === 'adminViolations' ? 'active' : ''}" onclick="switchView('adminViolations')">⚠ 违规</button>
-      <button class="${currentView === 'adminSettings' ? 'active' : ''}" onclick="switchView('adminSettings')">⚙ 设置</button>
-      <button class="${currentView === 'adminStats' ? 'active' : ''}" onclick="switchView('adminStats')">📈 统计</button>
-    `;
-            }
-            nav.innerHTML = navHTML;
-        }
-
-        // ============================================================
-        // HELPERS
-        // ============================================================
-        function formatTime(ts) {
-            if (!ts) return '-';
-            const d = new Date(ts);
-            if (isNaN(d.getTime())) return ts;
-            return d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        }
-
-        function now() { return new Date().toISOString().slice(0, 16).replace('T', ' '); }
-
-        function genOrderId() {
-            const d = new Date();
-            return 'DD' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2,
-                '0') + String(d.getTime() % 100000).padStart(5, '0');
-        }
-
-        // ============================================================
-        // 状态显示函数（大小写不敏感）
-        // ============================================================
-        function statusLabel(s) {
-            if (!s) return '未知';
-            const key = s.toLowerCase();
-            const map = {
-                pending: '待接单',
-                accepted: '已接单',
-                picked_up: '已取件',
-                delivering: '配送中',
-                delivered: '已送达',
-                rated: '已评价',
-                confirmed: '已完成',
-                cancelled: '已取消'
-            };
-            return map[key] || s;
-        }
-
-        function statusTagClass(s) {
-            if (!s) return 'tag-pending';
-            const key = s.toLowerCase();
-            const map = {
-                pending: 'tag-pending',
-                accepted: 'tag-accepted',
-                picked_up: 'tag-accepted',
-                delivering: 'tag-delivering',
-                delivered: 'tag-delivered',
-                rated: 'tag-rated',
-                confirmed: 'tag-delivered',
-                cancelled: 'tag-cancelled'
-            };
-            return map[key] || 'tag-pending';
-        }
-
-        const STATUS_ORDER = ['pending', 'accepted', 'picked_up', 'delivering', 'delivered', 'confirmed', 'rated',
-            'cancelled'
-        ];
-
-        function statusIdx(s) {
-            if (!s) return -1;
-            return STATUS_ORDER.indexOf(s.toLowerCase());
-        }
-
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.textContent = msg;
-            t.classList.add('show');
-            clearTimeout(t._tid);
-            t._tid = setTimeout(() => t.classList.remove('show'), 2200);
-        }
-
-        function openModal(title, bodyHTML, actionsHTML) {
-            document.getElementById('modalTitle').textContent = title;
-            document.getElementById('modalBody').innerHTML = bodyHTML;
-            document.getElementById('modalActions').innerHTML = actionsHTML || '';
-            document.getElementById('modal').classList.add('show');
-        }
-
-        function closeModal() {
-            document.getElementById('modal').classList.remove('show');
-        }
-        document.getElementById('modal').addEventListener('click', function(e) {
-            if (e.target === this) closeModal();
+      // 同步调用后端接口取消订单
+      try {
+        await apiRequest('/order/updateStatus', {
+          method: 'POST',
+          body: {
+            orderId: orderId,
+            status: 'CANCELLED'
+          }
         });
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeModal();
+        showToast('⚠ 订单 ' + orderId + ' 已被强制取消（已同步后端）');
+      } catch (e) {
+        console.error('后端取消订单失败:', e);
+        showToast('⚠ 本地已取消，但后端同步失败：' + e.message);
+      }
+
+      // 如果有跑腿员，考虑退还保证金或扣款逻辑
+      if (order.runnerId) {
+        // 可以在这里添加对跑腿员的处罚逻辑
+        const users = getUsers();
+        const runner = users.find(u => u.id === order.runnerId);
+        if (runner) {
+          // 示例：扣除部分佣金作为处罚
+          // runner.balance = Math.max(0, (runner.balance || 0) - 2);
+          // saveUsers(users);
+        }
+      }
+
+    } else {
+      showToast('⚠ 订单 ' + orderId + ' 当前状态为 ' + order.status + '，无法取消');
+    }
+  } else {
+    // 非取消操作，只记录违规
+    showToast('✅ 违规记录已保存（' + (action === 'warning' ? '警告' : '罚款') + '）');
+  }
+
+  // 3. 刷新违规页面和订单列表
+  renderAdminViolations();
+
+  // 如果当前在订单管理页面，也刷新
+  if (currentView === 'adminOrders') {
+    renderAdminOrders();
+  }
+}
+
+function checkOverdueOrders() {
+  const orders = getOrders();
+  const violations = getViolations();
+  const nowTime = new Date();
+  let changed = false;
+
+  orders.forEach(order => {
+    if (['delivered', 'rated'].includes(order.status)) return;
+    if (!order.acceptedAt) return;
+    const acceptedTime = new Date(order.acceptedAt);
+    const hoursSinceAccept = (nowTime - acceptedTime) / (1000 * 60 * 60);
+    if (hoursSinceAccept > 24) {
+      order.status = 'delivered';
+      order.deliveredAt = nowTime.toISOString().slice(0, 16).replace('T', ' ');
+      order.violation = {
+        reason: '接单后24小时未送达，系统自动标记违规',
+        action: 'cancel',
+        at: nowTime.toISOString().slice(0, 16).replace('T', ' ')
+      };
+      violations.push({
+        id: 'v' + Date.now() + Math.random().toString(36).slice(2,6),
+        orderId: order.id,
+        reportedBy: 'system',
+        reason: '接单后24小时未送达（自动检测）',
+        action: 'cancel',
+        createdAt: nowTime.toISOString().slice(0, 16).replace('T', ' ')
+      });
+      changed = true;
+    }
+  });
+  if (changed) {
+    saveOrders(orders);
+    saveViolations(violations);
+  }
+}
+
+// ============================================================
+// ROUTING
+// ============================================================
+let currentView = '';
+
+function switchView(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const el = document.getElementById('view-' + view);
+  if (el) el.classList.add('active');
+  currentView = view;
+  renderNavbar();
+  renderView(view);
+  window.scrollTo(0, 0);
+}
+
+function goHome() {
+    if (!currentUser) { switchView('login'); return; }
+    const map = { user: 'userHome', runner: 'runnerHall', admin: 'adminDashboard' };
+    const roleKey = currentUser.role ? currentUser.role.toLowerCase() : 'user';
+    switchView(map[roleKey] || 'login');
+}
+
+function renderView(view) {
+  switch (view) {
+    case 'login': renderLogin(); break;
+    case 'userHome': renderUserHome(); break;
+    case 'userOrders': renderUserOrders(); break;
+    case 'runnerHall': renderRunnerHall(); break;
+    case 'runnerDeliveries': renderRunnerDeliveries(); break;
+    case 'runnerEarnings': renderRunnerEarnings(); break;
+    case 'runnerApply': renderRunnerApply(); break;
+    case 'runnerWithdraw': renderRunnerWithdraw(); break;
+    case 'adminDashboard': renderAdminDashboard(); break;
+    case 'adminUsers': renderAdminUsers(); break;
+    case 'adminOrders': renderAdminOrders(); break;
+    case 'adminRunners': renderAdminRunners(); break;
+    case 'adminViolations': renderAdminViolations(); break;
+    case 'adminSettings': renderAdminSettings(); break;
+    case 'adminStats': renderAdminStats(); break;
+    default: console.warn('未知视图:', view);
+  }
+}
+
+// ============================================================
+// RENDER NAVBAR - 修复版
+// ============================================================
+function renderNavbar() {
+    const nav = document.getElementById('navbarNav');
+    const userEl = document.getElementById('navbarUser');
+
+    if (!currentUser) {
+        nav.innerHTML = '';
+        userEl.innerHTML = '<button class="btn btn-primary btn-sm" onclick="switchView(\'login\')">登录</button>';
+        return;
+    }
+
+    const u = currentUser;
+    const role = u.role ? u.role.toLowerCase() : 'user';
+    const roleMap = { user: '用户', runner: '跑腿', admin: '管理' };
+
+    userEl.innerHTML = `
+        <div class="avatar">${u.avatar}</div>
+        <span class="user-name">${u.name}</span>
+        <span class="user-role ${role}">${roleMap[role] || '用户'}</span>
+        <button class="btn btn-ghost btn-sm" onclick="logout()" style="margin-left:4px;">退出</button>
+    `;
+
+    let navHTML = '';
+    if (role === 'user') {
+        // 判断申请状态
+        let applyButtonText = '🎯 申请跑腿';
+        let applyButtonStyle = 'color:var(--warning);';
+        
+        if (u.runnerApplication && u.runnerApplication.status === 'pending') {
+            applyButtonText = '⏳ 审核中';
+            applyButtonStyle = 'color:var(--text-muted);';
+        } else if (u.runnerApplication && u.runnerApplication.status === 'approved') {
+            // 如果已经是跑腿员但角色还是user（刚通过审核还没刷新），显示提示
+            applyButtonText = '✅ 已是跑腿员';
+            applyButtonStyle = 'color:var(--success);';
+        }
+        
+        navHTML = `
+            <button class="${currentView === 'userHome' ? 'active' : ''}" onclick="switchView('userHome')">🏠 首页</button>
+            <button class="${currentView === 'userOrders' ? 'active' : ''}" onclick="switchView('userOrders')">📋 我的订单</button>
+            <button class="${currentView === 'runnerApply' ? 'active' : ''}" onclick="switchView('runnerApply')" style="${applyButtonStyle}">${applyButtonText}</button>
+        `;
+    } else if (role === 'runner') {
+        const pendingCount = getOrders().filter(o => o.status === 'pending').length;
+        const myActive = getOrders().filter(o => o.runnerId === u.id && !['delivered','rated','cancelled'].includes(o.status)).length;
+        navHTML = `
+            <button class="${currentView === 'runnerHall' ? 'active' : ''}" onclick="switchView('runnerHall')">📋 订单大厅 ${pendingCount ? '<b style="color:var(--danger)">'+pendingCount+'</b>' : ''}</button>
+            <button class="${currentView === 'runnerDeliveries' ? 'active' : ''}" onclick="switchView('runnerDeliveries')">🏃 我的配送 ${myActive ? '<b style="color:var(--warning)">'+myActive+'</b>' : ''}</button>
+            <button class="${currentView === 'runnerEarnings' ? 'active' : ''}" onclick="switchView('runnerEarnings')">💰 收入</button>
+            <button class="${currentView === 'runnerWithdraw' ? 'active' : ''}" onclick="switchView('runnerWithdraw')">💳 提现</button>
+        `;
+    } else if (role === 'admin') {
+        navHTML = `
+            <button class="${currentView === 'adminDashboard' ? 'active' : ''}" onclick="switchView('adminDashboard')">📊 仪表盘</button>
+            <button class="${currentView === 'adminUsers' ? 'active' : ''}" onclick="switchView('adminUsers')">👥 用户</button>
+            <button class="${currentView === 'adminRunners' ? 'active' : ''}" onclick="switchView('adminRunners')">🏃 跑腿</button>
+            <button class="${currentView === 'adminOrders' ? 'active' : ''}" onclick="switchView('adminOrders')">📦 订单</button>
+            <button class="${currentView === 'adminViolations' ? 'active' : ''}" onclick="switchView('adminViolations')">⚠ 违规</button>
+            <button class="${currentView === 'adminSettings' ? 'active' : ''}" onclick="switchView('adminSettings')">⚙ 设置</button>
+            <button class="${currentView === 'adminStats' ? 'active' : ''}" onclick="switchView('adminStats')">📈 统计</button>
+        `;
+    }
+    nav.innerHTML = navHTML;
+}
+// ============================================================
+// HELPERS
+// ============================================================
+function formatTime(ts) {
+  if (!ts) return '-';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return ts;
+  return d.toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function now() { return new Date().toISOString().slice(0, 16).replace('T', ' '); }
+function genOrderId() {
+  const d = new Date();
+  return 'DD' + d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0') + String(d.getTime()%100000).padStart(5,'0');
+}
+function statusLabel(s) {
+  const map = { pending:'待接单', accepted:'已接单', picked_up:'已取件', delivering:'配送中', delivered:'已送达', rated:'已评价', cancelled:'已取消' };
+  return map[s] || s;
+}
+const STATUS_ORDER = ['pending','accepted','picked_up','delivering','delivered','rated'];
+function statusIdx(s) { return STATUS_ORDER.indexOf(s); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function openModal(title, bodyHTML, actionsHTML) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHTML;
+  document.getElementById('modalActions').innerHTML = actionsHTML || '';
+  document.getElementById('modal').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+});
+
+function renderStars(rating, interactive, callback) {
+  let html = '<div class="stars" data-rating="' + rating + '">';
+  for (let i = 1; i <= 5; i++) {
+    html += '<span class="star' + (i <= rating ? ' active' : '') + '" data-star="' + i + '">★</span>';
+  }
+  html += '</div>';
+  if (interactive) {
+    setTimeout(() => {
+      const starsEl = document.querySelector('.stars');
+      if (!starsEl) return;
+      starsEl.querySelectorAll('.star').forEach(s => {
+        s.addEventListener('click', function() {
+          const v = parseInt(this.dataset.star);
+          starsEl.setAttribute('data-rating', v);
+          starsEl.querySelectorAll('.star').forEach(ss => ss.classList.toggle('active', parseInt(ss.dataset.star) <= v));
+          if (callback) callback(v);
         });
+        s.addEventListener('mouseenter', function() {
+          const v = parseInt(this.dataset.star);
+          starsEl.querySelectorAll('.star').forEach(ss => ss.classList.toggle('active', parseInt(ss.dataset.star) <= v));
+        });
+      });
+      starsEl.addEventListener('mouseleave', function() {
+        const v = parseInt(starsEl.getAttribute('data-rating'));
+        starsEl.querySelectorAll('.star').forEach(ss => ss.classList.toggle('active', parseInt(ss.dataset.star) <= v));
+      });
+    }, 50);
+  }
+  return html;
+}
 
-        function renderStars(rating, interactive, callback) {
-            let html = '<div class="stars" data-rating="' + rating + '">';
-            for (let i = 1; i <= 5; i++) {
-                html += '<span class="star' + (i <= rating ? ' active' : '') + '" data-star="' + i + '">★</span>';
-            }
-            html += '</div>';
-            if (interactive) {
-                setTimeout(() => {
-                    const starsEl = document.querySelector('.stars');
-                    if (!starsEl) return;
-                    starsEl.querySelectorAll('.star').forEach(s => {
-                        s.addEventListener('click', function() {
-                            const v = parseInt(this.dataset.star);
-                            starsEl.setAttribute('data-rating', v);
-                            starsEl.querySelectorAll('.star').forEach(ss => ss.classList.toggle('active',
-                                parseInt(ss.dataset.star) <= v));
-                            if (callback) callback(v);
-                        });
-                        s.addEventListener('mouseenter', function() {
-                            const v = parseInt(this.dataset.star);
-                            starsEl.querySelectorAll('.star').forEach(ss => ss.classList.toggle('active',
-                                parseInt(ss.dataset.star) <= v));
-                        });
-                    });
-                    starsEl.addEventListener('mouseleave', function() {
-                        const v = parseInt(starsEl.getAttribute('data-rating'));
-                        starsEl.querySelectorAll('.star').forEach(ss => ss.classList.toggle('active',
-                            parseInt(ss.dataset.star) <= v));
-                    });
-                }, 50);
-            }
-            return html;
-        }
+function getRunnerName(runnerId) {
+  if (!runnerId) return '-';
+  const u = getUsers().find(u => u.id === runnerId);
+  return u ? u.name : '未知';
+}
+// ============================================================
+// HELPER - 获取用户名
+// ============================================================
+function getUserName(userId) {
+  if (!userId) return '系统';
+  if (userId === 'system') return '系统';
+  const users = getUsers();
+  const user = users.find(u => u.id === userId);
+  return user ? user.name : '未知用户';
+}
 
-        function getRunnerName(runnerId) {
-            if (!runnerId) return '-';
-            const u = getUsers().find(u => u.id === runnerId);
-            return u ? u.name : '未知';
-        }
+function filterByKeyword(items, keyword, fields) {
+  if (!keyword || !keyword.trim()) return items;
+  const kw = keyword.trim().toLowerCase();
+  return items.filter(item => {
+    return fields.some(f => {
+      const val = item[f];
+      if (val == null) return false;
+      return String(val).toLowerCase().includes(kw);
+    });
+  });
+}
 
-        function getUserName(userId) {
-            if (!userId) return '-';
-            const u = getUsers().find(u => u.id === userId);
-            return u ? u.name : '未知';
-        }
-
-        function renderSearchBar(placeholder, inputId, onInputFn) {
-            return `
+function renderSearchBar(placeholder, inputId, onInputFn) {
+  return `
     <div class="search-bar">
       <span class="search-icon">🔍</span>
       <input type="text" class="search-input" id="${inputId}"
@@ -1835,48 +1937,36 @@
       <button class="search-clear" onclick="document.getElementById('${inputId}').value='';${onInputFn}('');" style="display:none;" id="${inputId}_clear">✕</button>
     </div>
   `;
-        }
+}
 
-        function filterByKeyword(items, keyword, fields) {
-            if (!keyword || !keyword.trim()) return items;
-            const kw = keyword.trim().toLowerCase();
-            return items.filter(item => {
-                return fields.some(f => {
-                    const val = item[f];
-                    if (val == null) return false;
-                    return String(val).toLowerCase().includes(kw);
-                });
-            });
-        }
+// ============================================================
+// VIEW: LOGIN / REGISTER
+// ============================================================
+let authMode = 'login';
+let registerRole = 'user';
 
-        // ============================================================
-        // VIEW: LOGIN / REGISTER
-        // ============================================================
-        let authMode = 'login';
-        let registerRole = 'user';
-
-        function renderLogin() {
-            document.getElementById('view-login').innerHTML = `
+function renderLogin() {
+  document.getElementById('view-login').innerHTML = `
     <div class="auth-wrapper">
       <div class="auth-card">
         <h2>${authMode === 'login' ? '欢迎回来 👋' : '创建账号 🎉'}</h2>
         <p class="subtitle">${authMode === 'login' ? '使用学号登录校园快递代取平台' : '加入校园快递代取平台'}</p>
         <div class="auth-tabs">
-          <button class="${authMode === 'login' ? 'active' : ''}" onclick="authMode='login';renderLogin();">登录</button>
-          <button class="${authMode === 'register' ? 'active' : ''}" onclick="authMode='register';renderLogin();">注册</button>
+          <button class="${authMode==='login'?'active':''}" onclick="authMode='login';renderLogin();">登录</button>
+          <button class="${authMode==='register'?'active':''}" onclick="authMode='register';renderLogin();">注册</button>
         </div>
         ${authMode === 'register' ? `
         <div class="form-group">
           <label>选择角色</label>
           <div class="role-select" id="roleSelect">
-            <div class="role-option ${registerRole === 'user' ? 'selected' : ''}" data-role="user" onclick="selectRole('user')">
+            <div class="role-option ${registerRole==='user'?'selected':''}" data-role="user" onclick="selectRole('user')">
               <span class="role-icon">👤</span>普通用户
             </div>
-            <div class="role-option ${registerRole === 'runner' ? 'selected' : ''}" data-role="runner" onclick="registerRole='runner';renderLogin();">
+            <div class="role-option ${registerRole==='runner'?'selected':''}" data-role="runner" onclick="registerRole='runner';renderLogin();">
               <span class="role-icon">🏃</span>跑腿员
             </div>
           </div>
-          ${registerRole === 'runner' ? '<p class="form-hint">💡 注册即提交跑腿申请，需管理员审核通过后方可接单</p>' : ''}
+          ${registerRole==='runner' ? '<p class="form-hint">💡 注册即提交跑腿申请，需管理员审核通过后方可接单</p>' : ''}
         </div>
         ` : ''}
         <div class="form-group">
@@ -1901,7 +1991,7 @@
         </div>
         <div class="error-msg" id="authError"></div>
         <button class="btn btn-primary btn-block btn-lg" style="margin-top:8px;" onclick="handleAuth()">
-          ${authMode === 'login' ? '登录' : registerRole === 'runner' ? '提交申请' : '注册'}
+          ${authMode === 'login' ? '登录' : registerRole==='runner' ? '提交申请' : '注册'}
         </button>
         ${authMode === 'login' ? `
         <div style="margin-top:20px;padding:16px;background:#F9FAFB;border-radius:8px;font-size:12px;color:var(--text-secondary);line-height:1.8;">
@@ -1914,109 +2004,124 @@
       </div>
     </div>
   `;
-        }
+}
 
-        function selectRole(role) {
-            registerRole = role;
-            renderLogin();
-        }
+function selectRole(role) {
+  registerRole = role;
+  renderLogin();
+}
 
-        async function handleAuth() {
-            const studentId = document.getElementById('authStudentId').value.trim();
-            const password = document.getElementById('authPassword').value.trim();
-            const errEl = document.getElementById('authError');
+async function handleAuth() {
+  const studentId = document.getElementById('authStudentId').value.trim();
+  const password = document.getElementById('authPassword').value.trim();
+  const errEl = document.getElementById('authError');
 
-            if (!studentId) { errEl.style.display = 'block';
-                errEl.textContent = '请输入学号'; return; }
-            if (!password) { errEl.style.display = 'block';
-                errEl.textContent = '请输入密码'; return; }
+  if (!studentId) { errEl.style.display = 'block'; errEl.textContent = '请输入学号'; return; }
+  if (!password) { errEl.style.display = 'block'; errEl.textContent = '请输入密码'; return; }
 
-            if (authMode === 'login') {
-                try {
-                    const data = await apiRequest('/user/login', {
-                        method: 'POST',
-                        body: { studentId, password }
-                    });
-                    const user = data;
-user.name = user.realName;
-user.role = user.role.toUpperCase();  // ← 加上这行
-user.avatar = user.realName ? user.realName.charAt(0) : 'U';
-                    user.status = 'active';
-                    user.balance = 0;
-                    user.totalEarned = 0;
-                    user.totalWithdrawn = 0;
-                    user.runnerApplication = user.role === 'runner' ? { status: 'approved' } : null;
-                    currentUser = user;
-                    saveSession({ id: user.id, role: user.role });
-                    const users = getUsers();
-                    const existing = users.find(u => u.id === user.id);
-                    if (!existing) {
-                        users.push(user);
-                        saveUsers(users);
-                    }
-                    errEl.style.display = 'none';
-                    showToast('✅ 登录成功！欢迎，' + user.name);
-                    await loadOrdersFromBackend();
-                    goHome();
-                } catch (e) {
-                    errEl.style.display = 'block';
-                    errEl.textContent = '❌ ' + (e.message || '登录失败');
-                }
-            } else {
-                const name = document.getElementById('authName').value.trim();
-                const phone = document.getElementById('authPhone') ? document.getElementById('authPhone').value.trim() :
-                '';
-                if (!name) { errEl.style.display = 'block';
-                    errEl.textContent = '请输入姓名'; return; }
-                if (password.length < 6) { errEl.style.display = 'block';
-                    errEl.textContent = '密码至少6位'; return; }
-                try {
-                    const data = await apiRequest('/user/register', {
-                        method: 'POST',
-                        body: { username: name, password, realName: name, phone, studentId }
-                    });
-                    const user = data;
-                    user.avatar = name.charAt(0);
-                    user.status = 'active';
-                    user.balance = 0;
-                    user.totalEarned = 0;
-                    user.totalWithdrawn = 0;
-                    user.runnerApplication = registerRole === 'runner' ? { status: 'pending' } : null;
-                    currentUser = user;
-                    saveSession({ id: user.id, role: user.role });
-                    const users = getUsers();
-                    users.push(user);
-                    saveUsers(users);
-                    errEl.style.display = 'none';
-                    showToast('🎉 注册成功！欢迎，' + user.name);
-                    await loadOrdersFromBackend();
-                    goHome();
-                } catch (e) {
-                    errEl.style.display = 'block';
-                    errEl.textContent = '❌ ' + (e.message || '注册失败');
-                }
-            }
-        }
+  if (authMode === 'login') {
+    try {
+      const data = await apiRequest('/user/login', {
+        method: 'POST',
+        body: { studentId, password }
+      });
+      const user = data;
+      user.name = user.realName;
+      user.role = user.role.toLowerCase();
+      user.avatar = user.realName ? user.realName.charAt(0) : 'U';
+      user.status = 'active';
+      user.balance = 0;
+      user.totalEarned = 0;
+      user.totalWithdrawn = 0;
+      user.runnerApplication = user.role === 'runner' ? { status: 'approved' } : null;
+      
+      // ===== 关键修复：检查本地是否有这个用户 =====
+      const localUsers = getUsers();
+      const existingLocalUser = localUsers.find(u => u.id === user.id);
+      
+      if (existingLocalUser) {
+        // 本地有该用户，保留本地的 runnerApplication
+        user.runnerApplication = existingLocalUser.runnerApplication || null;
+        user.phone = existingLocalUser.phone || user.phone || '';
+        user.balance = existingLocalUser.balance || 0;
+        user.totalEarned = existingLocalUser.totalEarned || 0;
+        user.totalWithdrawn = existingLocalUser.totalWithdrawn || 0;
+        // 更新本地用户
+        existingLocalUser.name = user.name;
+        existingLocalUser.role = user.role;
+        existingLocalUser.avatar = user.avatar;
+        existingLocalUser.phone = user.phone;
+        existingLocalUser.balance = user.balance;
+        existingLocalUser.totalEarned = user.totalEarned;
+        existingLocalUser.totalWithdrawn = user.totalWithdrawn;
+        existingLocalUser.runnerApplication = user.runnerApplication;
+        saveUsers(localUsers);
+      } else {
+        // 本地没有，添加
+        localUsers.push(user);
+        saveUsers(localUsers);
+      }
+      
+      currentUser = user;
+      saveSession({ id: user.id, role: user.role });
+      
+      errEl.style.display = 'none';
+      showToast('✅ 登录成功！欢迎，' + user.name);
+      await loadOrdersFromBackend();
+      goHome();
+    } catch (e) {
+      errEl.style.display = 'block';
+      errEl.textContent = '❌ ' + (e.message || '登录失败');
+    }
+  } else {
+    const name = document.getElementById('authName').value.trim();
+    const phone = document.getElementById('authPhone') ? document.getElementById('authPhone').value.trim() : '';
+    if (!name) { errEl.style.display = 'block'; errEl.textContent = '请输入姓名'; return; }
+    if (password.length < 6) { errEl.style.display = 'block'; errEl.textContent = '密码至少6位'; return; }
+    try {
+      const data = await apiRequest('/user/register', {
+        method: 'POST',
+        body: { username: name, password, realName: name, phone, studentId }
+      });
+      const user = data;
+      user.avatar = name.charAt(0);
+      user.status = 'active';
+      user.balance = 0;
+      user.totalEarned = 0;
+      user.totalWithdrawn = 0;
+      user.runnerApplication = registerRole === 'runner' ? { status: 'pending' } : null;
+      currentUser = user;
+      saveSession({ id: user.id, role: user.role });
+      const users = getUsers();
+      users.push(user);
+      saveUsers(users);
+      errEl.style.display = 'none';
+      showToast('🎉 注册成功！欢迎，' + user.name);
+      await loadOrdersFromBackend();
+      goHome();
+    } catch (e) {
+      errEl.style.display = 'block';
+      errEl.textContent = '❌ ' + (e.message || '注册失败');
+    }
+  }
+}
 
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && currentView === 'login') {
-                handleAuth();
-            }
-        });
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && currentView === 'login') {
+    handleAuth();
+  }
+});
 
-        // ============================================================
-        // VIEW: USER HOME
-        // ============================================================
-        function renderUserHome() {
-            const orders = getOrders();
-            const myOrders = orders.filter(o => o.publisherId === currentUser.id);
-            const pending = myOrders.filter(o => ['pending', 'accepted', 'picked_up', 'delivering'].includes(o.status
-                .toLowerCase()))
-                .length;
-            const completed = myOrders.filter(o => ['delivered', 'confirmed', 'rated'].includes(o.status.toLowerCase()))
-                .length;
+// ============================================================
+// VIEW: USER HOME
+// ============================================================
+function renderUserHome() {
+  const orders = getOrders();
+  const myOrders = orders.filter(o => o.userId === currentUser.id);
+  const pending = myOrders.filter(o => ['pending','accepted','picked_up','delivering'].includes(o.status)).length;
+  const completed = myOrders.filter(o => ['delivered','rated'].includes(o.status)).length;
 
-            document.getElementById('view-userHome').innerHTML = `
+  document.getElementById('view-userHome').innerHTML = `
     <div class="section-header">
       <div>
         <h2>👋 你好，${currentUser.name}</h2>
@@ -2027,7 +2132,7 @@ user.avatar = user.realName ? user.realName.charAt(0) : 'U';
     <div class="stats-row">
       <div class="stat-card">
         <div class="stat-icon blue">📦</div>
-        <div><div class="stat-value">${pending}</div><div class="stat-label">进行中订单</div></div>
+        <div><div class="stat-value">${pending}</div><div class="stat-label">配送中订单</div></div>
       </div>
       <div class="stat-card">
         <div class="stat-icon green">✅</div>
@@ -2035,11 +2140,11 @@ user.avatar = user.realName ? user.realName.charAt(0) : 'U';
       </div>
       <div class="stat-card">
         <div class="stat-icon orange">💰</div>
-        <div><div class="stat-value">¥${myOrders.reduce((s, o) => s + (o.reward || 0), 0)}</div><div class="stat-label">累计消费</div></div>
+        <div><div class="stat-value">¥${myOrders.reduce((s,o) => s + o.price, 0)}</div><div class="stat-label">累计消费</div></div>
       </div>
       <div class="stat-card">
         <div class="stat-icon purple">⭐</div>
-        <div><div class="stat-value">${myOrders.filter(o => o.evaluation > 0).length}</div><div class="stat-label">已评价</div></div>
+        <div><div class="stat-value">${myOrders.filter(o => o.rating > 0).length}</div><div class="stat-label">已评价</div></div>
       </div>
     </div>
 
@@ -2062,11 +2167,11 @@ user.avatar = user.realName ? user.realName.charAt(0) : 'U';
       ${renderOrderList(myOrders.slice(0, 5), 'user')}
     </div>
   `;
-        }
+}
 
-        function showCreateOrderForm() {
-            const pickupOptions = PICKUP_POINTS.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
-            const body = `
+function showCreateOrderForm() {
+  const pickupOptions = PICKUP_POINTS.map((p, i) => `<option value="${i}">${p.name}</option>`).join('');
+  const body = `
     <div class="form-row">
       <div class="form-group">
         <label>取件快递点 *</label>
@@ -2109,7 +2214,7 @@ user.avatar = user.realName ? user.realName.charAt(0) : 'U';
       </div>
       <div class="form-group">
         <label>截止时间</label>
-        <input type="datetime-local" id="coDeadline" value="${new Date(Date.now() + 30 * 60000).toISOString().slice(0, 16)}">
+        <input type="datetime-local" id="coDeadline" value="${new Date(Date.now()+8*3600000).toISOString().slice(0,16)}">
       </div>
     </div>
     <div class="form-group">
@@ -2118,201 +2223,213 @@ user.avatar = user.realName ? user.realName.charAt(0) : 'U';
     </div>
     <div class="error-msg" id="coError"></div>
   `;
-            const actions = `
+  const actions = `
     <button class="btn btn-outline" onclick="closeModal()">取消</button>
     <button class="btn btn-primary btn-lg" onclick="submitOrder()">📦 发布订单</button>
   `;
-            openModal('📦 发布代取订单', body, actions);
-        }
+  openModal('📦 发布代取订单', body, actions);
+}
 
-        async function submitOrder() {
-            const pickupIdx = parseInt(document.getElementById('coPickup').value);
-            const delivery = document.getElementById('coDelivery').value;
-            const pkgType = document.getElementById('coType').value;
-            const weight = document.getElementById('coWeight').value || '1.0kg';
-            const desc = document.getElementById('coDesc').value.trim();
-            const phone = document.getElementById('coPhone').value.trim();
-            const price = parseInt(document.getElementById('coPrice').value) || 5;
-            const deadline = document.getElementById('coDeadline').value.replace('T', ' ') || new Date(Date.now() + 30 * 60000).toISOString().slice(0, 16).replace('T', ' ');
-console.log('deadline的值:', deadline);
-console.log('deadline的长度:', deadline ? deadline.length : '空');
-const notes = document.getElementById('coNotes').value.trim();
-const errEl = document.getElementById('coError');
-            
+async function submitOrder() {
+  const pickupIdx = parseInt(document.getElementById('coPickup').value);
+  const delivery = document.getElementById('coDelivery').value;
+  const pkgType = document.getElementById('coType').value;
+  const weight = document.getElementById('coWeight').value || '1.0kg';
+  const desc = document.getElementById('coDesc').value.trim();
+  const phone = document.getElementById('coPhone').value.trim();
+  const price = parseInt(document.getElementById('coPrice').value) || 5;
+  const deadline = document.getElementById('coDeadline').value.replace('T', ' ') || new Date(Date.now() + 30 * 60000).toISOString().slice(0, 16).replace('T', ' ');
+  const notes = document.getElementById('coNotes').value.trim();
+  const errEl = document.getElementById('coError');
 
-            if (isNaN(pickupIdx)) { errEl.style.display = 'block';
-                errEl.textContent = '请选择取件点'; return; }
-            if (!delivery) { errEl.style.display = 'block';
-                errEl.textContent = '请选择送达地址'; return; }
-            if (!desc) { errEl.style.display = 'block';
-                errEl.textContent = '请描述包裹内容'; return; }
-            if (price < 3 || price > 50) { errEl.style.display = 'block';
-                errEl.textContent = '配送费建议在3-50元之间'; return; }
+  if (isNaN(pickupIdx)) { errEl.style.display='block'; errEl.textContent='请选择取件点'; return; }
+  if (!delivery) { errEl.style.display='block'; errEl.textContent='请选择送达地址'; return; }
+  if (!desc) { errEl.style.display='block'; errEl.textContent='请描述包裹内容'; return; }
+  if (price < 3 || price > 50) { errEl.style.display='block'; errEl.textContent='配送费建议在3-50元之间'; return; }
 
-            const pickup = PICKUP_POINTS[pickupIdx];
-            errEl.style.display = 'none';
+  const pickup = PICKUP_POINTS[pickupIdx];
+  errEl.style.display = 'none';
 
-            try {
-                const orderData = {
-    publisherId: currentUser.id,
-    stationName: pickup.name,
-    building: delivery,
-    pickupCode: 'CODE' + Date.now().toString().slice(-6),
-    itemInfo: desc + ' | ' + pkgType + ' | ' + weight,
-    reward: price,
-    timeoutAt: "2026-07-16 10:50:00"  // ← 改这里
-        
-};
-                const result = await apiRequest('/order/publish', {
-                    method: 'POST',
-                    body: orderData
-                });
-                closeModal();
-                showToast('✅ 订单发布成功！');
-                await refreshOrders();
-                renderUserHome();
-            } catch (e) {
-                errEl.style.display = 'block';
-                errEl.textContent = '❌ ' + e.message;
-            }
-        }
+  try {
+    // 1. 调后端存数据库
+    const result = await apiRequest('/order/publish', {
+      method: 'POST',
+      body: {
+        publisherId: currentUser.id,
+        stationName: pickup.name,
+        building: delivery,
+        pickupCode: 'CODE' + Date.now().toString().slice(-6),
+        itemInfo: desc + ' | ' + pkgType + ' | ' + weight,
+        reward: price,
+        timeoutAt: '2026-07-16 17:38:00'
+      }
+    });
 
-        // ============================================================
-        // VIEW: USER ORDERS
-        // ============================================================
-        let userOrderFilter = 'all';
-        let userOrderSearch = '';
+    // 2. 存 localStorage（用于前端展示）
+    const order = {
+      id: result.id || genOrderId(),
+      userId: currentUser.id,
+      runnerId: null,
+      pickup: pickup.name,
+      pickupDetail: pickup.detail,
+      delivery: delivery,
+      deliveryDetail: delivery,
+      recipient: currentUser.name,
+      recipientPhone: phone || currentUser.phone,
+      packageType: pkgType,
+      packageDesc: desc,
+      weight: weight,
+      price: price,
+      fee: Math.round(price * getConfig().platformFeeRate / 100 * 10) / 10,
+      status: 'pending',
+      notes: notes,
+      deadline: deadline,
+      timeoutAt: deadline,
+      createdAt: now(),
+      acceptedAt: null, pickedUpAt: null, deliveringAt: null, deliveredAt: null,
+      rating: 0, ratingComment: ''
+    };
 
-        function renderUserOrders() {
-            const orders = getOrders().filter(o => o.publisherId === currentUser.id);
-            document.getElementById('view-userOrders').innerHTML = `
+    const orders = getOrders();
+    orders.unshift(order);
+    saveOrders(orders);
+
+    closeModal();
+    showToast('✅ 订单发布成功！');
+    await loadOrdersFromBackend();
+    renderUserHome();
+  } catch (e) {
+    errEl.style.display = 'block';
+    errEl.textContent = '❌ ' + e.message;
+  }
+}
+
+// ============================================================
+// VIEW: USER ORDERS
+// ============================================================
+function renderUserOrders() {
+  const orders = getOrders().filter(o => o.userId === currentUser.id);
+  document.getElementById('view-userOrders').innerHTML = `
     <div class="section-header">
       <div><h2>📋 我的订单</h2><p>共 ${orders.length} 个订单</p></div>
       <button class="btn btn-primary btn-sm" onclick="showCreateOrderForm()">📦 发布新订单</button>
     </div>
     ${renderSearchBar('🔍 搜索订单号/取件点/送达点...', 'userOrderSearchInput', 'onUserOrderSearch')}
     <div class="tabs" id="userOrderTabs">
-      <button class="tab ${userOrderFilter === 'all' ? 'active' : ''}" data-filter="all">全部</button>
-      <button class="tab ${userOrderFilter === 'active' ? 'active' : ''}" data-filter="active">进行中</button>
-      <button class="tab ${userOrderFilter === 'done' ? 'active' : ''}" data-filter="done">已完成</button>
+      <button class="tab ${userOrderFilter==='all'?'active':''}" data-filter="all">全部</button>
+      <button class="tab ${userOrderFilter==='active'?'active':''}" data-filter="active">进行中</button>
+      <button class="tab ${userOrderFilter==='done'?'active':''}" data-filter="done">已完成</button>
     </div>
     <div class="order-list" id="userOrderList"></div>
   `;
 
-            document.querySelectorAll('#userOrderTabs .tab').forEach(tab => {
-                tab.onclick = function() {
-                    userOrderFilter = this.dataset.filter;
-                    renderUserOrders();
-                };
-            });
+  document.querySelectorAll('#userOrderTabs .tab').forEach(tab => {
+    tab.onclick = function() {
+      userOrderFilter = this.dataset.filter;
+      renderUserOrders();
+    };
+  });
 
-            setTimeout(() => {
-                const inp = document.getElementById('userOrderSearchInput');
-                if (inp) inp.value = userOrderSearch;
-            }, 10);
+  setTimeout(() => {
+    const inp = document.getElementById('userOrderSearchInput');
+    if (inp) inp.value = userOrderSearch;
+  }, 10);
 
-            filterUserOrders(userOrderFilter);
-        }
+  filterUserOrders(userOrderFilter);
+}
 
-        function onUserOrderSearch(val) {
-            userOrderSearch = val;
-            filterUserOrders(userOrderFilter);
-        }
+let userOrderFilter = 'all';
+let userOrderSearch = '';
 
-        function filterUserOrders(filter) {
-            userOrderFilter = filter;
-            const orders = getOrders().filter(o => o.publisherId === currentUser.id);
-            let result = orders;
-            if (filter === 'active') result = orders.filter(o => {
-                const status = o.status ? o.status.toLowerCase() : '';
-                return !['delivered', 'confirmed', 'rated', 'cancelled'].includes(status);
-            });
-            if (filter === 'done') result = orders.filter(o => {
-                const status = o.status ? o.status.toLowerCase() : '';
-                return ['delivered', 'confirmed', 'rated', 'cancelled'].includes(status);
-            });
-            result = filterByKeyword(result, userOrderSearch, ['id', 'stationName', 'building', 'itemInfo']);
-            document.getElementById('userOrderList').innerHTML = renderOrderList(result, 'user');
+function onUserOrderSearch(val) {
+  userOrderSearch = val;
+  filterUserOrders(userOrderFilter);
+}
 
-            // 绑定点击事件
-            document.getElementById('userOrderList').onclick = function(e) {
-                const card = e.target.closest('.order-card');
-                if (card) {
-                    const orderId = card.getAttribute('data-order-id');
-                    if (orderId) showUserOrderDetail(orderId);
-                }
-            };
-        }
+function filterUserOrders(filter) {
+  userOrderFilter = filter;
+  const orders = getOrders().filter(o => o.userId === currentUser.id);
+  let result = orders;
+  if (filter === 'active') result = orders.filter(o => !['delivered','rated','cancelled'].includes(o.status));
+  if (filter === 'done') result = orders.filter(o => ['delivered','rated','cancelled'].includes(o.status));
+  result = filterByKeyword(result, userOrderSearch, ['id', 'pickup', 'delivery', 'packageDesc']);
+  document.getElementById('userOrderList').innerHTML = renderOrderList(result, 'user');
 
-        function showUserOrderDetail(orderId) {
-            const order = getOrders().find(o => o.id === orderId);
-            if (!order) return;
+  document.getElementById('userOrderList').onclick = function(e) {
+    const card = e.target.closest('.order-card');
+    if (card) {
+      const orderId = card.getAttribute('data-order-id');
+      if (orderId) showUserOrderDetail(orderId);
+    }
+  };
+}
 
-            const body = `
+function showUserOrderDetail(orderId) {
+  const order = getOrders().find(o => o.id == orderId);
+  if (!order) return;
+
+  const body = `
     ${renderOrderTimeline(order)}
     <div class="detail-row"><span class="detail-label">订单号</span><span class="detail-value">#${String(order.id).slice(-8)}</span></div>
-    <div class="detail-row"><span class="detail-label">状态</span><span class="detail-value"><span class="tag ${statusTagClass(order.status)}">${statusLabel(order.status)}</span></span></div>
-    <div class="detail-row"><span class="detail-label">取件点</span><span class="detail-value">${order.stationName || '-'}</span></div>
-    <div class="detail-row"><span class="detail-label">送达地址</span><span class="detail-value">${order.building || '-'}</span></div>
-    <div class="detail-row"><span class="detail-label">包裹</span><span class="detail-value">${order.itemInfo || '-'}</span></div>
-    <div class="detail-row"><span class="detail-label">配送费</span><span class="detail-value" style="font-size:18px;color:var(--primary);font-weight:700;">¥${order.reward || 0}</span></div>
+    <div class="detail-row"><span class="detail-label">状态</span><span class="detail-value"><span class="tag tag-${order.status}">${statusLabel(order.status)}</span></span></div>
+    <div class="detail-row"><span class="detail-label">取件点</span><span class="detail-value">${order.pickupDetail}</span></div>
+    <div class="detail-row"><span class="detail-label">送达地址</span><span class="detail-value">${order.deliveryDetail}</span></div>
+    <div class="detail-row"><span class="detail-label">包裹</span><span class="detail-value">${order.packageType} — ${order.packageDesc}</span></div>
+    <div class="detail-row"><span class="detail-label">配送费</span><span class="detail-value" style="font-size:18px;color:var(--primary);font-weight:700;">¥${order.price}</span></div>
     ${order.runnerId ? `<div class="detail-row"><span class="detail-label">跑腿员</span><span class="detail-value">${getRunnerName(order.runnerId)}</span></div>` : ''}
-    ${order.evaluation > 0 ? `<div class="detail-row"><span class="detail-label">评价</span><span class="detail-value">${renderStars(order.evaluation, false)} ${order.evaluationContent || ''}</span></div>` : ''}
+    ${order.rating > 0 ? `<div class="detail-row"><span class="detail-label">我的评价</span><span class="detail-value">${renderStars(order.rating, false)} ${order.ratingComment}</span></div>` : ''}
     ${order.timeoutAt ? `<div class="detail-row"><span class="detail-label">截止时间</span><span class="detail-value">${formatTime(order.timeoutAt)}</span></div>` : ''}
   `;
 
-            let actions = '<button class="btn btn-outline" onclick="closeModal()">关闭</button>';
-            if (order.status && order.status.toLowerCase() === 'pending') {
-                actions +=
-                    `<button class="btn btn-danger btn-sm" onclick="userCancelOrder('${order.id}')">❌ 取消订单</button>`;
-            }
-            if (order.status && order.status.toLowerCase() === 'delivered') {
-                actions += `<button class="btn btn-warning" onclick="showRatingForm('${order.id}')">⭐ 评价跑腿</button>`;
-            }
-            openModal('📋 订单详情 #' + String(order.id).slice(-8), body, actions);
-        }
+  let actions = '<button class="btn btn-outline" onclick="closeModal()">关闭</button>';
+  if (order.status === 'pending') {
+    actions += `<button class="btn btn-danger btn-sm" onclick="userCancelOrder('${order.id}')">❌ 取消订单</button>`;
+  }
+  if (order.status === 'delivered') {
+    actions += `<button class="btn btn-warning" onclick="showRatingForm('${order.id}')">⭐ 评价跑腿</button>`;
+  }
+  openModal('📋 订单详情 #' + String(order.id).slice(-8), body, actions);
+}
 
-        async function userCancelOrder(orderId) {
-            if (!confirm('确定要取消该订单吗？')) return;
-            try {
-                await apiRequest('/order/updateStatus', {
-                    method: 'POST',
-                    body: { orderId: orderId, status: 'CANCELLED' }
-                });
-                closeModal();
-                showToast('❌ 订单已取消');
-                await refreshOrders();
-                renderUserOrders();
-            } catch (e) {
-                showToast('❌ ' + e.message);
-            }
-        }
+async function userCancelOrder(orderId) {
+  if (!confirm('确定要取消该订单吗？')) return;
+  try {
+    await apiRequest('/order/updateStatus', {
+      method: 'POST',
+      body: { orderId: orderId, status: 'CANCELLED' }
+    });
+    closeModal();
+    showToast('❌ 订单已取消');
+    await loadOrdersFromBackend();
+    renderUserOrders();
+  } catch (e) {
+    showToast('❌ ' + e.message);
+  }
+}
 
-        function renderOrderTimeline(order) {
-            if (!order || !order.status) return '<div class="timeline">无状态</div>';
-            const status = order.status.toLowerCase();
-            const si = statusIdx(status);
-            const steps = ['pending', 'accepted', 'picked_up', 'delivering', 'delivered'];
-            const labels = ['待接单', '已接单', '已取件', '配送中', '已送达'];
-            let html = '<div class="timeline">';
-            steps.forEach((s, i) => {
-                let cls = '';
-                if (i < si) cls = 'done';
-                else if (i === si && !['confirmed', 'rated', 'cancelled'].includes(status)) cls = 'current';
-                if (['confirmed', 'rated'].includes(status)) cls = 'done';
-                if (status === 'cancelled' && i === 0) cls = 'done';
-                const icon = (cls === 'done') ? '✓' : (cls === 'current' ? '●' : '');
-                html += `<div class="timeline-step">
+function renderOrderTimeline(order) {
+  const si = statusIdx(order.status);
+  const steps = ['pending','accepted','picked_up','delivering','delivered'];
+  const labels = ['待接单','已接单','已取件','配送中','已送达'];
+  let html = '<div class="timeline">';
+  steps.forEach((s, i) => {
+    let cls = '';
+    if (i < si) cls = 'done';
+    else if (i === si && order.status !== 'rated' && order.status !== 'cancelled') cls = 'current';
+    if (order.status === 'rated') cls = 'done';
+    if (order.status === 'cancelled' && i === 0) cls = 'done';
+    const icon = (cls === 'done') ? '✓' : (cls === 'current' ? '●' : '');
+    html += `<div class="timeline-step">
       <div class="timeline-dot ${cls}">${icon}</div>
       <div class="timeline-label">${labels[i]}</div>
     </div>`;
-            });
-            html += '</div>';
-            return html;
-        }
+  });
+  html += '</div>';
+  return html;
+}
 
-        function showRatingForm(orderId) {
-            const body = `
+function showRatingForm(orderId) {
+  const body = `
     <p style="margin-bottom:12px;">请为本次跑腿服务打分：</p>
     ${renderStars(5, true)}
     <div class="form-group" style="margin-top:16px;">
@@ -2320,54 +2437,49 @@ const errEl = document.getElementById('coError');
       <textarea id="ratingComment" placeholder="分享您的体验..." maxlength="100"></textarea>
     </div>
   `;
-            const actions = `
+  const actions = `
     <button class="btn btn-outline" onclick="closeModal()">取消</button>
     <button class="btn btn-warning" onclick="submitRating('${orderId}')">⭐ 提交评价</button>
   `;
-            openModal('⭐ 评价订单', body, actions);
-        }
+  openModal('⭐ 评价订单', body, actions);
+}
 
-        async function submitRating(orderId) {
-            const starsEl = document.querySelector('.stars');
-            const rating = parseInt(starsEl ? starsEl.getAttribute('data-rating') : 5);
-            const comment = document.getElementById('ratingComment') ? document.getElementById('ratingComment').value
-                .trim() : '';
+async function submitRating(orderId) {
+  const starsEl = document.querySelector('.stars');
+  const rating = parseInt(starsEl ? starsEl.getAttribute('data-rating') : 5);
+  const comment = document.getElementById('ratingComment') ? document.getElementById('ratingComment').value.trim() : '';
 
-            try {
-                await apiRequest('/order/confirm', {
-                    method: 'POST',
-                    body: {
-                        orderId: orderId,
-                        userId: currentUser.id,
-                        evaluation: rating,
-                        evaluationContent: comment
-                    }
-                });
-                closeModal();
-                showToast('⭐ 评价成功！感谢您的反馈');
-                await refreshOrders();
-                renderUserOrders();
-            } catch (e) {
-                showToast('❌ ' + e.message);
-            }
-        }
+  try {
+    await apiRequest('/order/confirm', {
+      method: 'POST',
+      body: {
+        orderId: orderId,
+        userId: currentUser.id,
+        evaluation: rating,
+        evaluationContent: comment
+      }
+    });
+    closeModal();
+    showToast('⭐ 评价成功！感谢您的反馈');
+    await loadOrdersFromBackend();
+    renderUserOrders();
+  } catch (e) {
+    showToast('❌ ' + e.message);
+  }
+}
 
-        // ============================================================
-        // VIEW: RUNNER HALL
-        // ============================================================
-        let hallSortBy = 'time';
-        let hallSearch = '';
+// ============================================================
+// VIEW: RUNNER HALL
+// ============================================================
+let hallSortBy = 'time';
+let hallSearch = '';
 
-        async function renderRunnerHall() {
-    const existingSort = document.getElementById('hallSort');
-    if (existingSort) hallSortBy = existingSort.value;
+function renderRunnerHall() {
+  const orders = getOrders().filter(o => o.status === 'pending');
+  const existingSort = document.getElementById('hallSort');
+  if (existingSort) hallSortBy = existingSort.value;
 
-    try {
-        // 跑腿员获取所有待接订单（userId=0, role=all）
-        const data = await apiRequest('/order/list?userId=0&role=all');
-        const orders = data.filter(o => o.status && o.status.toLowerCase() === 'pending');
-
-        document.getElementById('view-runnerHall').innerHTML = `
+  document.getElementById('view-runnerHall').innerHTML = `
     <div class="section-header">
       <div>
         <h2>📋 订单大厅</h2>
@@ -2375,256 +2487,286 @@ const errEl = document.getElementById('coError');
       </div>
       <div style="display:flex;gap:8px;">
         <select id="hallSort" onchange="renderRunnerHall()" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:13px;">
-          <option value="time" ${hallSortBy === 'time' ? 'selected' : ''}>按时间排序</option>
-          <option value="price" ${hallSortBy === 'price' ? 'selected' : ''}>按价格排序</option>
-          <option value="urgent" ${hallSortBy === 'urgent' ? 'selected' : ''}>急件优先</option>
+          <option value="time" ${hallSortBy==='time'?'selected':''}>按时间排序</option>
+          <option value="price" ${hallSortBy==='price'?'selected':''}>按价格排序</option>
+          <option value="urgent" ${hallSortBy==='urgent'?'selected':''}>急件优先</option>
         </select>
         <button class="btn btn-outline btn-sm" onclick="renderRunnerHall()">🔄 刷新</button>
       </div>
     </div>
     ${renderSearchBar('🔍 搜索订单号/取件点/送达点...', 'hallSearchInput', 'onHallSearch')}
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-icon blue">📋</div><div><div class="stat-value">${orders.length}</div><div class="stat-label">可接订单</div></div></div>
+      <div class="stat-card"><div class="stat-icon green">💰</div><div><div class="stat-value">¥${orders.reduce((s,o)=>s+o.price,0)}</div><div class="stat-label">总配送费</div></div></div>
+      <div class="stat-card"><div class="stat-icon red">🔥</div><div><div class="stat-value">${orders.filter(o=>o.packageType==='急件').length}</div><div class="stat-label">急件订单</div></div></div>
+      <div class="stat-card"><div class="stat-icon orange">⭐</div><div><div class="stat-value">4.9</div><div class="stat-label">我的好评率</div></div></div>
+    </div>
     <div class="order-list" id="hallOrderList"></div>
   `;
 
-        setTimeout(() => { const inp = document.getElementById('hallSearchInput'); if (inp) inp.value = hallSearch; }, 10);
+  setTimeout(() => { const inp = document.getElementById('hallSearchInput'); if (inp) inp.value = hallSearch; }, 10);
 
-        let sorted = filterByKeyword([...orders], hallSearch, ['id', 'stationName', 'building', 'itemInfo']);
-        if (hallSortBy === 'price') sorted.sort((a, b) => (b.reward || 0) - (a.reward || 0));
-        if (hallSortBy === 'urgent') sorted.sort((a, b) => ((a.itemInfo || '').includes('急件') ? 1 : 0) - ((b.itemInfo || '').includes('急件') ? 1 : 0) || (b.reward || 0) - (a.reward || 0));
+  let sorted = filterByKeyword([...orders], hallSearch, ['id', 'pickup', 'delivery', 'packageDesc']);
+  if (hallSortBy === 'price') sorted.sort((a,b) => b.price - a.price);
+  if (hallSortBy === 'urgent') sorted.sort((a,b) => (b.packageType==='急件'?1:0) - (a.packageType==='急件'?1:0) || b.price - a.price);
 
-        document.getElementById('hallOrderList').innerHTML = renderOrderList(sorted, 'runner');
-        document.getElementById('hallOrderList').onclick = function(e) {
-            const card = e.target.closest('.order-card');
-            if (card) {
-                const orderId = card.getAttribute('data-order-id');
-                if (orderId) showRunnerOrderDetail(orderId);
-            }
-        };
-    } catch (e) {
-        showToast('❌ 加载订单失败');
+  document.getElementById('hallOrderList').innerHTML = renderOrderList(sorted, 'runner');
+  document.getElementById('hallOrderList').onclick = function(e) {
+    const card = e.target.closest('.order-card');
+    if (card) {
+      const orderId = card.getAttribute('data-order-id');
+      if (orderId) showRunnerOrderDetail(orderId);
     }
+  };
 }
 
-        function onHallSearch(val) { hallSearch = val;
-            renderRunnerHall(); }
+function onHallSearch(val) { hallSearch = val; renderRunnerHall(); }
 
-        function renderOrderList(orders, context) {
-            if (!orders || !orders.length) {
-                const msgs = {
-                    user_all: '还没有订单，快去发布第一个吧~',
-                    user_active: '没有进行中的订单',
-                    user_done: '还没有完成的订单',
-                    runner: '暂无可接订单，休息一下吧~',
-                    runner_my: '没有配送中的订单',
-                    admin: '暂无订单'
-                };
-                return `<div class="empty-state"><div class="icon">📭</div><h3>${msgs[context] || '暂无数据'}</h3></div>`;
-            }
-            return orders.map(o => {
-                const isUrgent = (o.itemInfo || '').includes('急件');
-                const status = o.status || '';
-                return `
-    <div class="order-card ${isUrgent && status.toLowerCase() === 'pending' ? 'pulse' : ''}" data-order-id="${String(o.id)}">
+function renderOrderList(orders, context) {
+  if (!orders || !orders.length) {
+    const msgs = {
+      user_all: '还没有订单，快去发布第一个吧~',
+      user_active: '没有进行中的订单',
+      user_done: '还没有完成的订单',
+      runner: '暂无可接订单，休息一下吧~',
+      runner_my: '没有配送中的订单',
+      admin: '暂无订单'
+    };
+    return `<div class="empty-state"><div class="icon">📭</div><h3>${msgs[context] || '暂无数据'}</h3></div>`;
+  }
+  return orders.map(o => {
+    const isUrgent = o.packageType === '急件';
+    const status = o.status || '';
+    return `
+    <div class="order-card ${isUrgent && status==='pending' ? 'pulse' : ''}" data-order-id="${String(o.id)}">
       <div class="order-card-header">
         <div>
           <span class="order-id">#${String(o.id).slice(-8)}</span>
           <span class="order-time" style="margin-left:10px;">${formatTime(o.createdAt)}</span>
         </div>
-        <span class="tag ${isUrgent ? 'tag-urgent' : statusTagClass(status)}">${isUrgent ? '🔥 急件' : statusLabel(status)}</span>
+        <span class="tag ${isUrgent ? 'tag-urgent' : 'tag-' + status}">${isUrgent ? '🔥 急件' : statusLabel(status)}</span>
       </div>
       <div class="order-route">
         <span class="route-dot from"></span>
-        <span class="route-text" title="${o.stationName || ''}">${o.stationName || '未知取件点'}</span>
+        <span class="route-text" title="${o.pickup}">${o.pickup}</span>
         <span class="route-line"></span>
         <span class="route-dot to"></span>
-        <span class="route-text" title="${o.building || ''}">${o.building || '未知送达点'}</span>
+        <span class="route-text" title="${o.delivery}">${o.delivery}</span>
       </div>
       <div class="order-footer">
-        <div class="order-price">¥${o.reward || 0}</div>
+        <div class="order-price">¥${o.price} <small style="font-size:12px;color:var(--text-secondary);">到手 ¥${(o.price - o.fee).toFixed(1)}</small></div>
         <div class="order-meta">
-          <span>📦 ${o.itemInfo ? o.itemInfo.substring(0, 20) : ''}</span>
+          <span>📦 ${o.packageType}</span>
+          <span>⚖ ${o.weight}</span>
+          <span>⏰ ${o.deadline ? o.deadline.slice(5) : ''}</span>
           ${context === 'admin' ? `<span>👤 ${getRunnerName(o.runnerId)}</span>` : ''}
         </div>
       </div>
     </div>`;
-            }).join('');
-        }
+  }).join('');
+}
 
-        function showRunnerOrderDetail(orderId) {
-            const order = getOrders().find(o => o.id === orderId);
-            if (!order) return;
-            const body = `
-    <div class="detail-row"><span class="detail-label">状态</span><span class="detail-value"><span class="tag ${statusTagClass(order.status)}">${statusLabel(order.status)}</span></span></div>
-    <div class="detail-row"><span class="detail-label">取件点</span><span class="detail-value">${order.stationName || '-'}</span></div>
-    <div class="detail-row"><span class="detail-label">送达地址</span><span class="detail-value">${order.building || '-'}</span></div>
-    <div class="detail-row"><span class="detail-label">包裹信息</span><span class="detail-value">${order.itemInfo || '-'}</span></div>
-    <div class="detail-row"><span class="detail-label">配送费</span><span class="detail-value" style="font-size:18px;color:var(--primary);font-weight:700;">¥${order.reward || 0}</span></div>
-    ${order.timeoutAt ? `<div class="detail-row"><span class="detail-label">截止时间</span><span class="detail-value">${formatTime(order.timeoutAt)}</span></div>` : ''}
+function showRunnerOrderDetail(orderId) {
+  const order = getOrders().find(o => o.id == orderId);
+  if (!order) return;
+  const body = `
+    <div class="detail-row"><span class="detail-label">状态</span><span class="detail-value"><span class="tag tag-${order.status}">${statusLabel(order.status)}</span></span></div>
+    <div class="detail-row"><span class="detail-label">包裹</span><span class="detail-value">${order.packageType} — ${order.packageDesc} (${order.weight})</span></div>
+    <div class="detail-row"><span class="detail-label">取件点</span><span class="detail-value">${order.pickupDetail}</span></div>
+    <div class="detail-row"><span class="detail-label">送达地址</span><span class="detail-value">${order.deliveryDetail}</span></div>
+    <div class="detail-row"><span class="detail-label">收件人</span><span class="detail-value">${order.recipient} (${order.recipientPhone})</span></div>
+    <div class="detail-row"><span class="detail-label">截止时间</span><span class="detail-value">${order.deadline || '-'}</span></div>
+    <div class="detail-row"><span class="detail-label">备注</span><span class="detail-value">${order.notes || '无'}</span></div>
+    <div class="detail-row"><span class="detail-label">配送费</span><span class="detail-value" style="font-size:18px;color:var(--primary);font-weight:700;">¥${order.price} <small style="color:var(--text-secondary);">(到手¥${(order.price-order.fee).toFixed(1)})</small></span></div>
   `;
-            let actions = '<button class="btn btn-outline" onclick="closeModal()">关闭</button>';
-            if (order.status && order.status.toLowerCase() === 'pending') {
-                actions += `<button class="btn btn-primary" onclick="acceptOrder('${order.id}')">✅ 接单</button>`;
-            }
-            if (order.runnerId === currentUser.id && order.status && order.status.toLowerCase() === 'accepted') {
-                actions += `<button class="btn btn-warning" onclick="pickupOrder('${order.id}')">📦 确认取件</button>`;
-            }
-            if (order.runnerId === currentUser.id && order.status && order.status.toLowerCase() === 'picked_up') {
-                actions += `<button class="btn btn-primary" onclick="startDelivery('${order.id}')">🚀 开始配送</button>`;
-            }
-            if (order.runnerId === currentUser.id && order.status && order.status.toLowerCase() === 'delivering') {
-                actions += `<button class="btn btn-success" onclick="completeDelivery('${order.id}')">✅ 确认送达</button>`;
-            }
-            openModal('📋 订单详情 #' + String(order.id).slice(-8), body, actions);
-        }
+  let actions = '<button class="btn btn-outline" onclick="closeModal()">关闭</button>';
+  if (order.status === 'pending') {
+    actions += `<button class="btn btn-primary" onclick="acceptOrder('${order.id}')">✅ 接单</button>`;
+  }
+  if (order.runnerId === currentUser.id && order.status === 'accepted') {
+    actions += `<button class="btn btn-warning" onclick="pickupOrder('${order.id}')">📦 确认取件</button>`;
+  }
+  if (order.runnerId === currentUser.id && order.status === 'picked_up') {
+    actions += `<button class="btn btn-primary" onclick="startDelivery('${order.id}')">🚀 开始配送</button>`;
+  }
+  if (order.runnerId === currentUser.id && order.status === 'delivering') {
+    actions += `<button class="btn btn-success" onclick="completeDelivery('${order.id}')">✅ 确认送达</button>`;
+  }
+  openModal('📋 订单详情 #' + String(order.id).slice(-8), body, actions);
+}
 
-        async function acceptOrder(orderId) {
-            try {
-                await apiRequest('/order/accept', {
-                    method: 'POST',
-                    body: { orderId: orderId, runnerId: currentUser.id }
-                });
-                closeModal();
-                showToast('✅ 接单成功！请尽快前往取件');
-                await refreshOrders();
-                renderRunnerHall();
-            } catch (e) {
-                showToast('❌ ' + e.message);
-            }
-        }
+async function acceptOrder(orderId) {
+  try {
+    await apiRequest('/order/accept', {
+      method: 'POST',
+      body: { orderId: orderId, runnerId: currentUser.id }
+    });
+    closeModal();
+    showToast('✅ 接单成功！请尽快前往取件');
+    await loadOrdersFromBackend();
+    renderRunnerHall();
+  } catch (e) {
+    showToast('❌ ' + e.message);
+  }
+}
 
-        // ============================================================
-        // VIEW: RUNNER DELIVERIES
-        // ============================================================
-        let deliveryFilter = 'active';
-        let deliverySearch = '';
+// ============================================================
+// VIEW: RUNNER DELIVERIES
+// ============================================================
+let deliveryFilter = 'active';
+let deliverySearch = '';
 
-        function renderRunnerDeliveries() {
-            const orders = getOrders().filter(o => o.runnerId === currentUser.id);
-            const active = orders.filter(o => {
-                const status = o.status ? o.status.toLowerCase() : '';
-                return !['delivered', 'confirmed', 'rated', 'cancelled'].includes(status);
-            });
-            const done = orders.filter(o => {
-                const status = o.status ? o.status.toLowerCase() : '';
-                return ['delivered', 'confirmed', 'rated', 'cancelled'].includes(status);
-            });
+function renderRunnerDeliveries() {
+  const orders = getOrders().filter(o => o.runnerId === currentUser.id);
+  const active = orders.filter(o => !['delivered','rated','cancelled'].includes(o.status));
+  const done = orders.filter(o => ['delivered','rated','cancelled'].includes(o.status));
 
-            document.getElementById('view-runnerDeliveries').innerHTML = `
+  document.getElementById('view-runnerDeliveries').innerHTML = `
     <div class="section-header">
       <div><h2>🏃 我的配送</h2><p>${active.length} 个进行中，${done.length} 个已完成</p></div>
     </div>
     ${renderSearchBar('🔍 搜索订单号/取件点/送达点...', 'deliverySearchInput', 'onDeliverySearch')}
     <div class="tabs" id="runnerDeliveryTabs">
-      <button class="tab ${deliveryFilter === 'active' ? 'active' : ''}" data-filter="active">🔄 进行中 (${active.length})</button>
-      <button class="tab ${deliveryFilter === 'done' ? 'active' : ''}" data-filter="done">✅ 已完成 (${done.length})</button>
+      <button class="tab ${deliveryFilter==='active'?'active':''}" data-filter="active">🔄 进行中 (${active.length})</button>
+      <button class="tab ${deliveryFilter==='done'?'active':''}" data-filter="done">✅ 已完成 (${done.length})</button>
     </div>
     <div class="order-list" id="runnerDeliveryList"></div>
   `;
 
-            setTimeout(() => { const inp = document.getElementById('deliverySearchInput'); if (inp) inp.value =
-                deliverySearch; }, 10);
+  setTimeout(() => { const inp = document.getElementById('deliverySearchInput'); if (inp) inp.value = deliverySearch; }, 10);
 
-            document.querySelectorAll('#runnerDeliveryTabs .tab').forEach(tab => {
-                tab.onclick = function() {
-                    deliveryFilter = this.dataset.filter;
-                    renderRunnerDeliveries();
-                };
+  document.querySelectorAll('#runnerDeliveryTabs .tab').forEach(tab => {
+    tab.onclick = function() {
+      deliveryFilter = this.dataset.filter;
+      renderRunnerDeliveries();
+    };
+  });
+
+  const list = filterByKeyword(deliveryFilter === 'active' ? active : done, deliverySearch, ['id', 'pickup', 'delivery', 'packageDesc']);
+  document.getElementById('runnerDeliveryList').innerHTML = renderOrderList(list, 'runner_my');
+  document.getElementById('runnerDeliveryList').onclick = function(e) {
+    const card = e.target.closest('.order-card');
+    if (card) {
+      const orderId = card.getAttribute('data-order-id');
+      if (orderId) showRunnerOrderDetail(orderId);
+    }
+  };
+}
+
+function onDeliverySearch(val) { deliverySearch = val; renderRunnerDeliveries(); }
+
+async function pickupOrder(orderId) {
+    try {
+        await apiRequest('/order/updateStatus', {
+            method: 'POST',
+            body: { orderId: orderId, status: 'DELIVERING' }  // 改成 DELIVERING
+        });
+        closeModal();
+        showToast('📦 已确认取件，开始配送');
+        await loadOrdersFromBackend();
+        renderRunnerDeliveries();
+    } catch (e) {
+        showToast('❌ ' + e.message);
+    }
+}
+
+async function startDelivery(orderId) {
+  try {
+    await apiRequest('/order/updateStatus', {
+      method: 'POST',
+      body: { orderId: orderId, status: 'DELIVERING' }
+    });
+    closeModal();
+    showToast('🚀 开始配送！');
+    await loadOrdersFromBackend();
+    renderRunnerDeliveries();
+  } catch (e) {
+    showToast('❌ ' + e.message);
+  }
+}
+
+async function completeDelivery(orderId) {
+    try {
+        await apiRequest('/order/updateStatus', {
+            method: 'POST',
+            body: { orderId: orderId, status: 'DELIVERED' }
+        });
+        closeModal();
+        showToast('✅ 已确认送达！辛苦了~');
+
+        // ========== 添加收益（存 localStorage） ==========
+        const orders = getOrders();
+        const order = orders.find(o => o.id == orderId);
+        if (order && order.runnerId === currentUser.id) {
+            const fee = order.price || 0;
+            const platformRate = getConfig().platformFeeRate || 20;
+            const earnings = Math.round(fee * (1 - platformRate / 100) * 100) / 100;
+
+            // 更新用户余额
+            const users = getUsers();
+            const user = users.find(u => u.id === currentUser.id);
+            if (user) {
+                user.balance = (user.balance || 0) + earnings;
+                user.totalEarned = (user.totalEarned || 0) + earnings;
+                saveUsers(users);
+                currentUser = user;
+            }
+
+            // 记录收益
+            const withdrawals = getWithdrawals();
+            withdrawals.push({
+                id: 'w' + Date.now(),
+                runnerId: currentUser.id,
+                orderId: order.id,
+                amount: earnings,
+                status: 'completed',
+                requestedAt: now(),
+                processedAt: now(),
+                note: '订单 ' + order.id + ' 配送完成'
             });
+            saveWithdrawals(withdrawals);
 
-            const list = filterByKeyword(deliveryFilter === 'active' ? active : done, deliverySearch, ['id',
-                'stationName', 'building', 'itemInfo'
-            ]);
-            document.getElementById('runnerDeliveryList').innerHTML = renderOrderList(list, 'runner_my');
-            document.getElementById('runnerDeliveryList').onclick = function(e) {
-                const card = e.target.closest('.order-card');
-                if (card) {
-                    const orderId = card.getAttribute('data-order-id');
-                    if (orderId) showRunnerOrderDetail(orderId);
-                }
-            };
+            showToast('💰 收益 +¥' + earnings.toFixed(1));
         }
+        // ====================================
 
-        function onDeliverySearch(val) { deliverySearch = val;
-            renderRunnerDeliveries(); }
+        await loadOrdersFromBackend();
+        renderRunnerDeliveries();
+        renderRunnerEarnings();
+    } catch (e) {
+        showToast('❌ ' + e.message);
+    }
+}
 
-        async function pickupOrder(orderId) {
-            try {
-                await apiRequest('/order/updateStatus', {
-                    method: 'POST',
-                    body: { orderId: orderId, status: 'PICKED_UP' }
-                });
-                closeModal();
-                showToast('📦 已确认取件，请尽快配送');
-                await refreshOrders();
-                renderRunnerDeliveries();
-            } catch (e) {
-                showToast('❌ ' + e.message);
-            }
-        }
+// ============================================================
+// VIEW: RUNNER EARNINGS
+// ============================================================
+function renderRunnerEarnings() {
+  const orders = getOrders().filter(o => o.runnerId === currentUser.id);
+  const doneOrders = orders.filter(o => ['delivered','rated'].includes(o.status));
+  const totalEarnings = doneOrders.reduce((s, o) => s + (o.price - o.fee), 0);
+  const totalOrders = doneOrders.length;
+  const avgRating = doneOrders.filter(o => o.rating > 0).reduce((s,o,i,arr) => s + o.rating/arr.length, 0);
 
-        async function startDelivery(orderId) {
-            try {
-                await apiRequest('/order/updateStatus', {
-                    method: 'POST',
-                    body: { orderId: orderId, status: 'DELIVERING' }
-                });
-                closeModal();
-                showToast('🚀 开始配送！');
-                await refreshOrders();
-                renderRunnerDeliveries();
-            } catch (e) {
-                showToast('❌ ' + e.message);
-            }
-        }
+  const today = new Date().toISOString().slice(0, 10);
+  const todayOrders = doneOrders.filter(o => (o.deliveredAt || '').startsWith(today));
+  const todayEarnings = todayOrders.reduce((s, o) => s + (o.price - o.fee), 0);
 
-        async function completeDelivery(orderId) {
-            try {
-                await apiRequest('/order/updateStatus', {
-                    method: 'POST',
-                    body: { orderId: orderId, status: 'DELIVERED' }
-                });
-                closeModal();
-                showToast('✅ 已确认送达！辛苦了~');
-                await refreshOrders();
-                renderRunnerDeliveries();
-            } catch (e) {
-                showToast('❌ ' + e.message);
-            }
-        }
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000);
+    const ds = d.toISOString().slice(0, 10);
+    const dayOrders = doneOrders.filter(o => (o.deliveredAt || '').startsWith(ds));
+    days.push({
+      label: ['日','一','二','三','四','五','六'][d.getDay()],
+      date: ds.slice(5),
+      amount: dayOrders.reduce((s, o) => s + (o.price - o.fee), 0),
+      count: dayOrders.length,
+    });
+  }
+  const maxAmount = Math.max(...days.map(d => d.amount), 1);
 
-        // ============================================================
-        // VIEW: RUNNER EARNINGS
-        // ============================================================
-        function renderRunnerEarnings() {
-            const orders = getOrders().filter(o => o.runnerId === currentUser.id);
-            const doneOrders = orders.filter(o => {
-                const status = o.status ? o.status.toLowerCase() : '';
-                return ['delivered', 'confirmed', 'rated'].includes(status);
-            });
-            const totalEarnings = doneOrders.reduce((s, o) => s + (o.reward || 0), 0);
-            const totalOrders = doneOrders.length;
-            const avgRating = doneOrders.filter(o => o.evaluation > 0).reduce((s, o, i, arr) => s + o.evaluation / arr
-                .length, 0);
-
-            const today = new Date().toISOString().slice(0, 10);
-            const todayOrders = doneOrders.filter(o => (o.updatedAt || '').startsWith(today));
-            const todayEarnings = todayOrders.reduce((s, o) => s + (o.reward || 0), 0);
-
-            const days = [];
-            for (let i = 6; i >= 0; i--) {
-                const d = new Date(Date.now() - i * 86400000);
-                const ds = d.toISOString().slice(0, 10);
-                const dayOrders = doneOrders.filter(o => (o.updatedAt || '').startsWith(ds));
-                days.push({
-                    label: ['日', '一', '二', '三', '四', '五', '六'][d.getDay()],
-                    date: ds.slice(5),
-                    amount: dayOrders.reduce((s, o) => s + (o.reward || 0), 0),
-                    count: dayOrders.length,
-                });
-            }
-            const maxAmount = Math.max(...days.map(d => d.amount), 1);
-
-            document.getElementById('view-runnerEarnings').innerHTML = `
+  document.getElementById('view-runnerEarnings').innerHTML = `
     <div class="section-header"><div><h2>💰 收入看板</h2><p>辛苦啦！这是你的劳动成果</p></div></div>
     <div class="stats-row">
       <div class="stat-card"><div class="stat-icon green">💰</div><div><div class="stat-value">¥${todayEarnings.toFixed(0)}</div><div class="stat-label">今日收入</div></div></div>
@@ -2639,7 +2781,7 @@ const errEl = document.getElementById('coError');
         ${days.map(d => `
           <div class="bar-col">
             <div class="bar-value">¥${d.amount.toFixed(0)}</div>
-            <div class="bar" style="height:${(d.amount / maxAmount * 120) || 4}px;" title="${d.date}: ¥${d.amount.toFixed(1)} (${d.count}单)"></div>
+            <div class="bar" style="height:${(d.amount/maxAmount*120) || 4}px;" title="${d.date}: ¥${d.amount.toFixed(1)} (${d.count}单)"></div>
             <div class="bar-label">${d.label}<br>${d.date}</div>
           </div>
         `).join('')}
@@ -2655,11 +2797,11 @@ const errEl = document.getElementById('coError');
             ${doneOrders.slice(-10).reverse().map(o => `
               <tr>
                 <td style="font-weight:600;">#${String(o.id).slice(-8)}</td>
-                <td>${o.stationName || '-'}</td>
-                <td>${o.building || '-'}</td>
-                <td style="color:var(--primary);font-weight:600;">¥${(o.reward || 0).toFixed(1)}</td>
-                <td>${o.evaluation > 0 ? '⭐'.repeat(o.evaluation) : '-'}</td>
-                <td style="color:var(--text-secondary);">${formatTime(o.updatedAt)}</td>
+                <td>${o.pickup}</td>
+                <td>${o.delivery}</td>
+                <td style="color:var(--primary);font-weight:600;">¥${(o.price-o.fee).toFixed(1)}</td>
+                <td>${o.rating > 0 ? '⭐'.repeat(o.rating) : '-'}</td>
+                <td style="color:var(--text-secondary);">${formatTime(o.deliveredAt)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -2667,20 +2809,94 @@ const errEl = document.getElementById('coError');
       </div>
     </div>
   `;
-        }
+}
 
-        // ============================================================
-        // VIEW: RUNNER APPLY
-        // ============================================================
-        function renderRunnerApply() {
-            const u = currentUser;
-            const existing = u.runnerApplication;
-            document.getElementById('view-runnerApply').innerHTML = `
+// ============================================================
+// VIEW: RUNNER APPLY
+// ============================================================
+// ============================================================
+// VIEW: RUNNER APPLY - 修复版
+// ============================================================
+function renderRunnerApply() {
+  const u = currentUser;
+  if (!u) {
+    document.getElementById('view-runnerApply').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔒</div>
+        <h3>请先登录</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const existing = u.runnerApplication;
+  const role = u.role ? u.role.toLowerCase() : 'user';
+
+  // 检查是否已经是跑腿员
+  if (role === 'runner') {
+    document.getElementById('view-runnerApply').innerHTML = `
+      <div class="section-header"><div><h2>🏃 跑腿员状态</h2></div></div>
+      <div class="card" style="max-width:600px;">
+        <div style="padding:20px;text-align:center;background:#ECFDF5;border-radius:12px;">
+          <div style="font-size:48px;margin-bottom:12px;">🏃</div>
+          <h3 style="color:#065F46;">您已经是跑腿员了！</h3>
+          <p style="color:var(--text-secondary);">快去订单大厅接单吧 💪</p>
+          <p style="font-size:13px;color:var(--text-secondary);margin-top:8px;">余额：<b style="color:var(--primary);">¥${(u.balance || 0).toFixed(1)}</b></p>
+          <button class="btn btn-primary" onclick="switchView('runnerHall')" style="margin-top:12px;">📋 前往订单大厅</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // 检查是否有待审核的申请
+  if (existing && existing.status === 'pending') {
+    document.getElementById('view-runnerApply').innerHTML = `
+      <div class="section-header"><div><h2>⏳ 申请状态</h2></div></div>
+      <div class="card" style="max-width:600px;">
+        <div style="padding:20px;text-align:center;background:#FFF7ED;border-radius:12px;">
+          <div style="font-size:48px;margin-bottom:12px;">⏳</div>
+          <h3 style="color:#92400E;">申请审核中</h3>
+          <p style="color:var(--text-secondary);">您的跑腿申请已提交，请耐心等待管理员审核</p>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:8px;">提交时间：${existing.appliedAt}</p>
+          <p style="font-size:12px;color:var(--text-muted);">申请理由：${existing.reason || '无'}</p>
+          <button class="btn btn-outline btn-sm" onclick="renderRunnerApply()" style="margin-top:12px;">🔄 刷新状态</button>
+          <button class="btn btn-outline btn-sm" onclick="goHome()" style="margin-top:12px;">🏠 返回首页</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // 如果申请被拒绝，显示重新申请表单
+  if (existing && existing.status === 'rejected') {
+    document.getElementById('view-runnerApply').innerHTML = `
+      <div class="section-header"><div><h2>🎯 重新申请跑腿员</h2><p>您之前的申请已被拒绝，可以重新申请</p></div></div>
+      <div class="card" style="max-width:600px;">
+        <div class="info-banner warn" style="display:block;margin-bottom:16px;">
+          ⚠ 您之前的申请已被拒绝，请重新提交申请
+          ${existing.reviewedAt ? '<br>拒绝时间：' + existing.reviewedAt : ''}
+        </div>
+        <div class="form-group"><label>学号</label><input type="text" value="${u.studentId || ''}" disabled style="background:#F3F4F6;"></div>
+        <div class="form-group"><label>姓名</label><input type="text" value="${u.name || ''}" disabled style="background:#F3F4F6;"></div>
+        <div class="form-group"><label>手机号</label><input type="text" id="applyPhone" value="${u.phone || ''}" placeholder="请输入手机号"></div>
+        <div class="form-group"><label>申请理由</label><textarea id="applyReason" placeholder="请简要说明：如课余时间、可配送时段等"></textarea></div>
+        <div style="padding:12px;background:#FFF7ED;border-radius:8px;font-size:12px;color:#92400E;margin-bottom:12px;">
+          💡 提交后将由管理员审核，审核通过后即可开始接单配送。
+        </div>
+        <div class="error-msg" id="applyError"></div>
+        <button class="btn btn-primary btn-block btn-lg" onclick="submitRunnerApply()">📩 重新提交申请</button>
+      </div>
+    `;
+    return;
+  }
+
+  // 显示申请表单（首次申请）
+  document.getElementById('view-runnerApply').innerHTML = `
     <div class="section-header"><div><h2>🎯 申请成为跑腿员</h2><p>利用课余时间赚取零花钱</p></div></div>
     <div class="card" style="max-width:600px;">
-      ${existing && existing.status === 'rejected' ? '<div class="error-msg" style="display:block;margin-bottom:16px;">⚠ 您之前的申请已被拒绝，可以重新申请</div>' : ''}
-      <div class="form-group"><label>学号</label><input type="text" value="${u.studentId}" disabled style="background:#F3F4F6;"></div>
-      <div class="form-group"><label>姓名</label><input type="text" value="${u.name}" disabled style="background:#F3F4F6;"></div>
+      <div class="form-group"><label>学号</label><input type="text" value="${u.studentId || ''}" disabled style="background:#F3F4F6;"></div>
+      <div class="form-group"><label>姓名</label><input type="text" value="${u.name || ''}" disabled style="background:#F3F4F6;"></div>
       <div class="form-group"><label>手机号</label><input type="text" id="applyPhone" value="${u.phone || ''}" placeholder="请输入手机号"></div>
       <div class="form-group"><label>申请理由</label><textarea id="applyReason" placeholder="请简要说明：如课余时间、可配送时段等"></textarea></div>
       <div style="padding:12px;background:#FFF7ED;border-radius:8px;font-size:12px;color:#92400E;margin-bottom:12px;">
@@ -2690,130 +2906,143 @@ const errEl = document.getElementById('coError');
       <button class="btn btn-primary btn-block btn-lg" onclick="submitRunnerApply()">📩 提交申请</button>
     </div>
   `;
-        }
+}
 
-        function submitRunnerApply() {
-            const reason = document.getElementById('applyReason').value.trim();
-            const phone = document.getElementById('applyPhone').value.trim();
-            const errEl = document.getElementById('applyError');
-            if (!phone) { errEl.style.display = 'block';
-                errEl.textContent = '请输入手机号'; return; }
-            const users = getUsers();
-            const user = users.find(u => u.id === currentUser.id);
-            user.phone = phone;
-            saveUsers(users);
-            currentUser.phone = phone;
-            const result = applyForRunner(reason);
-            if (!result.ok) { errEl.style.display = 'block';
-                errEl.textContent = result.msg; return; }
-            showToast('✅ ' + result.msg);
-            goHome();
-        }
+function submitRunnerApply() {
+  const reason = document.getElementById('applyReason').value.trim();
+  const phone = document.getElementById('applyPhone').value.trim();
+  const errEl = document.getElementById('applyError');
 
-        // ============================================================
-        // VIEW: RUNNER WITHDRAW
-        // ============================================================
-        function renderRunnerWithdraw() {
-            const withdrawals = getWithdrawals().filter(w => w.runnerId === currentUser.id);
-            const cfg = getConfig();
-            document.getElementById('view-runnerWithdraw').innerHTML = `
-    <div class="section-header"><div><h2>💳 收益提现</h2><p>可提现余额：<b style="color:var(--primary);font-size:18px;">¥${currentUser.balance.toFixed(0)}</b></p></div></div>
-    <div class="stats-row">
-      <div class="stat-card"><div class="stat-icon green">💰</div><div><div class="stat-value">¥${currentUser.balance.toFixed(0)}</div><div class="stat-label">可提现余额</div></div></div>
-      <div class="stat-card"><div class="stat-icon blue">📊</div><div><div class="stat-value">¥${currentUser.totalEarned.toFixed(0)}</div><div class="stat-label">累计收入</div></div></div>
-      <div class="stat-card"><div class="stat-icon orange">💳</div><div><div class="stat-value">¥${currentUser.totalWithdrawn.toFixed(0)}</div><div class="stat-label">已提现</div></div></div>
-      <div class="stat-card"><div class="stat-icon purple">🔒</div><div><div class="stat-value">¥${cfg.minWithdraw}</div><div class="stat-label">最低提现额</div></div></div>
-    </div>
-    <div class="card" style="max-width:500px;margin-bottom:16px;">
-      <h3 style="margin-bottom:12px;">📤 申请提现</h3>
-      <div class="form-row">
-        <div class="form-group"><label>提现金额 (¥)</label><input type="number" id="withdrawAmount" placeholder="最低 ¥${cfg.minWithdraw}" min="${cfg.minWithdraw}" max="${currentUser.balance}"></div>
-      </div>
-      <div class="error-msg" id="withdrawError"></div>
-      <button class="btn btn-warning btn-block" onclick="submitWithdraw()" ${currentUser.balance < cfg.minWithdraw ? 'disabled' : ''}>
-        💳 申请提现（最低 ¥${cfg.minWithdraw}）
-      </button>
-    </div>
-    <div class="card">
-      <h3 style="margin-bottom:12px;">📋 提现记录</h3>
-      ${withdrawals.length === 0 ? '<div class="empty-state"><div class="icon">📭</div><h3>暂无提现记录</h3></div>' : `
-      <div class="table-wrap"><table>
-        <thead><tr><th>金额</th><th>状态</th><th>申请时间</th><th>处理时间</th><th>备注</th></tr></thead>
-        <tbody>${withdrawals.reverse().map(w => `
-          <tr>
-            <td style="font-weight:600;color:var(--primary);">¥${w.amount}</td>
-            <td><span class="tag ${w.status === 'completed' ? 'tag-delivered' : w.status === 'pending' ? 'tag-accepted' : 'tag-urgent'}">${{pending:'处理中',completed:'已到账',rejected:'已退回'}[w.status]}</span></td>
-            <td>${w.requestedAt}</td>
-            <td>${w.processedAt || '-'}</td>
-            <td>${w.note || '-'}</td>
-          </tr>`).join('')}</tbody>
-      </table></div>`}
-    </div>
-  `;
-        }
+  if (!phone) { errEl.style.display='block'; errEl.textContent='请输入手机号'; return; }
 
-        function submitWithdraw() {
-            const amount = parseInt(document.getElementById('withdrawAmount').value) || 0;
-            const errEl = document.getElementById('withdrawError');
-            const result = requestWithdrawal(amount);
-            if (!result.ok) { errEl.style.display = 'block';
-                errEl.textContent = result.msg; return; }
-            showToast('✅ ' + result.msg);
-            renderRunnerWithdraw();
-        }
+  const users = getUsers();
+  const user = users.find(u => u.id === currentUser.id);
+  if (!user) { errEl.style.display='block'; errEl.textContent='用户不存在'; return; }
 
-        // ============================================================
-        // VIEW: ADMIN DASHBOARD
-        // ============================================================
-        function renderAdminDashboard() {
-            const users = getUsers();
-            const orders = getOrders();
-            const runners = users.filter(u => u.role === 'runner');
-            const normalUsers = users.filter(u => u.role === 'user');
-            const pendingOrders = orders.filter(o => o.status && o.status.toLowerCase() === 'pending').length;
-            const activeOrders = orders.filter(o => {
-                const status = o.status ? o.status.toLowerCase() : '';
-                return !['delivered', 'confirmed', 'rated', 'cancelled'].includes(status);
-            }).length;
-            const completedOrders = orders.filter(o => {
-                const status = o.status ? o.status.toLowerCase() : '';
-                return ['delivered', 'confirmed', 'rated'].includes(status);
-            }).length;
+  user.phone = phone;
+  user.runnerApplication = {
+    status: 'pending',
+    appliedAt: new Date().toISOString().slice(0, 10),
+    reason: reason || '无'
+  };
+  saveUsers(users);
+  currentUser = user;
 
-            document.getElementById('view-adminDashboard').innerHTML = `
+  showToast('✅ 申请已提交，等待管理员审核');
+  // 跳转到申请状态页面而不是首页
+  switchView('runnerApply');
+}
+
+// ============================================================
+// VIEW: RUNNER WITHDRAW
+// ============================================================
+function renderRunnerWithdraw() {
+    // 从 localStorage 重新加载用户数据
+    const users = getUsers();
+    const user = users.find(u => u.id === currentUser.id);
+    if (user) {
+        currentUser = user;
+    }
+
+    const withdrawals = getWithdrawals().filter(w => w.runnerId === currentUser.id);
+    const balance = currentUser.balance || 0;
+
+    document.getElementById('view-runnerWithdraw').innerHTML = `
+        <div class="section-header">
+            <div>
+                <h2>💳 收益提现</h2>
+                <p>可提现余额：<b style="color:var(--primary);font-size:18px;">¥${balance.toFixed(0)}</b></p>
+            </div>
+        </div>
+        <div class="stats-row">
+            <div class="stat-card"><div class="stat-icon green">💰</div><div><div class="stat-value">¥${balance.toFixed(0)}</div><div class="stat-label">可提现余额</div></div></div>
+            <div class="stat-card"><div class="stat-icon blue">📊</div><div><div class="stat-value">¥${(currentUser.totalEarned || 0).toFixed(0)}</div><div class="stat-label">累计收入</div></div></div>
+            <div class="stat-card"><div class="stat-icon orange">💳</div><div><div class="stat-value">¥${(currentUser.totalWithdrawn || 0).toFixed(0)}</div><div class="stat-label">已提现</div></div></div>
+        </div>
+        <div class="card" style="max-width:500px;margin-bottom:16px;">
+            <h3 style="margin-bottom:12px;">📤 申请提现</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>提现金额 (¥)</label>
+                    <input type="number" id="withdrawAmount" placeholder="输入金额" min="0.01" max="${balance}" step="0.01">
+                </div>
+            </div>
+            <button class="btn btn-warning btn-block" onclick="requestWithdrawal(parseFloat(document.getElementById('withdrawAmount').value) || 0)">
+                💳 立即提现
+            </button>
+        </div>
+        <div class="card">
+            <h3 style="margin-bottom:12px;">📋 提现记录</h3>
+            ${withdrawals.length === 0 ? '<div class="empty-state"><div class="icon">📭</div><h3>暂无提现记录</h3></div>' : `
+            <div class="table-wrap"><table>
+                <thead><tr><th>金额</th><th>状态</th><th>时间</th><th>备注</th></tr></thead>
+                <tbody>${withdrawals.slice().reverse().map(w => `
+                    <tr>
+                        <td style="font-weight:600;color:var(--primary);">¥${w.amount}</td>
+                        <td><span class="tag tag-delivered">已到账</span></td>
+                        <td>${w.requestedAt}</td>
+                        <td>${w.note || '-'}</td>
+                    </tr>
+                `).join('')}</tbody>
+            </table></div>`}
+        </div>
+    `;
+}
+function submitWithdraw() {
+  const amount = parseInt(document.getElementById('withdrawAmount').value) || 0;
+  const errEl = document.getElementById('withdrawError');
+  const result = requestWithdrawal(amount);
+  if (!result.ok) { errEl.style.display='block'; errEl.textContent=result.msg; return; }
+  showToast('✅ ' + result.msg);
+  renderRunnerWithdraw();
+}
+
+// ============================================================
+// VIEW: ADMIN DASHBOARD
+// ============================================================
+function renderAdminDashboard() {
+  const users = getUsers();
+  const orders = getOrders();
+  const runners = users.filter(u => u.role === 'runner');
+  const normalUsers = users.filter(u => u.role === 'user');
+  const pendingOrders = orders.filter(o => o.status === 'pending').length;
+  const activeOrders = orders.filter(o => !['delivered','rated','cancelled'].includes(o.status)).length;
+  const completedOrders = orders.filter(o => ['delivered','rated'].includes(o.status)).length;
+
+  document.getElementById('view-adminDashboard').innerHTML = `
     <div class="section-header"><div><h2>📊 管理仪表盘</h2><p>平台运营数据总览</p></div></div>
     <div class="stats-row">
       <div class="stat-card"><div class="stat-icon blue">👥</div><div><div class="stat-value">${normalUsers.length}</div><div class="stat-label">注册用户</div></div></div>
       <div class="stat-card"><div class="stat-icon orange">🏃</div><div><div class="stat-value">${runners.length}</div><div class="stat-label">跑腿员</div></div></div>
       <div class="stat-card"><div class="stat-icon green">📦</div><div><div class="stat-value">${orders.length}</div><div class="stat-label">总订单</div></div></div>
-      <div class="stat-card"><div class="stat-icon purple">📊</div><div><div class="stat-value">${orders.length ? (completedOrders / orders.length * 100).toFixed(0) : 0}%</div><div class="stat-label">完成率</div></div></div>
+      <div class="stat-card"><div class="stat-icon purple">📊</div><div><div class="stat-value">${orders.length ? (completedOrders/orders.length*100).toFixed(0) : 0}%</div><div class="stat-label">完成率</div></div></div>
     </div>
     <div class="stats-row">
       <div class="stat-card"><div class="stat-icon blue">📋</div><div><div class="stat-value">${pendingOrders}</div><div class="stat-label">待接订单</div></div></div>
       <div class="stat-card"><div class="stat-icon orange">🔄</div><div><div class="stat-value">${activeOrders}</div><div class="stat-label">进行中订单</div></div></div>
       <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-value">${completedOrders}</div><div class="stat-label">已完成订单</div></div></div>
-      <div class="stat-card"><div class="stat-icon red">❌</div><div><div class="stat-value">${orders.filter(o => o.status && o.status.toLowerCase() === 'cancelled').length}</div><div class="stat-label">已取消</div></div></div>
+      <div class="stat-card"><div class="stat-icon red">❌</div><div><div class="stat-value">${orders.filter(o => o.status === 'cancelled').length}</div><div class="stat-label">已取消</div></div></div>
     </div>
     <div class="card">
       <div class="card-header"><h3>📋 最新订单</h3><button class="btn btn-outline btn-sm" onclick="switchView('adminOrders')">查看全部 →</button></div>
       ${renderOrderList(orders.slice(0, 8), 'admin')}
     </div>
   `;
-            document.querySelector('#view-adminDashboard .order-list')?.addEventListener('click', function(e) {
-                const card = e.target.closest('.order-card');
-                if (card) {
-                    const orderId = card.getAttribute('data-order-id');
-                    if (orderId) showAdminOrderDetail(orderId);
-                }
-            });
-        }
+  document.querySelector('#view-adminDashboard .order-list')?.addEventListener('click', function(e) {
+    const card = e.target.closest('.order-card');
+    if (card) {
+      const orderId = card.getAttribute('data-order-id');
+      if (orderId) showAdminOrderDetail(orderId);
+    }
+  });
+}
 
-        // ============================================================
-        // VIEW: ADMIN USERS
-        // ============================================================
-        function renderAdminUsers() {
-            const users = getUsers();
-            document.getElementById('view-adminUsers').innerHTML = `
+// ============================================================
+// VIEW: ADMIN USERS
+// ============================================================
+function renderAdminUsers() {
+  const users = getUsers();
+  document.getElementById('view-adminUsers').innerHTML = `
     <div class="section-header"><div><h2>👥 用户管理</h2><p>共 ${users.length} 个用户</p></div></div>
     <div class="card"><div class="table-wrap">
       <table>
@@ -2823,13 +3052,13 @@ const errEl = document.getElementById('coError');
             <tr>
               <td style="font-weight:600;">${u.name}</td>
               <td>${u.phone}</td>
-              <td><span class="tag ${u.role === 'admin' ? 'tag-urgent' : u.role === 'runner' ? 'tag-accepted' : 'tag-pending'}">${{user:'用户',runner:'跑腿',admin:'管理'}[u.role]}</span></td>
-              <td><span class="badge-dot ${u.status === 'active' ? 'online' : 'offline'}"></span>${u.status === 'active' ? '正常' : '禁用'}</td>
+              <td><span class="tag ${u.role==='admin'?'tag-urgent':u.role==='runner'?'tag-accepted':'tag-pending'}">${{user:'用户',runner:'跑腿',admin:'管理'}[u.role]}</span></td>
+              <td><span class="badge-dot ${u.status==='active'?'online':'offline'}"></span>${u.status==='active'?'正常':'禁用'}</td>
               <td style="color:var(--text-secondary);">${u.createdAt}</td>
               <td>
                 ${u.role !== 'admin' ? `
-                <button class="btn btn-xs ${u.status === 'active' ? 'btn-danger' : 'btn-success'}" onclick="toggleUserStatus('${u.id}')">
-                  ${u.status === 'active' ? '禁用' : '启用'}
+                <button class="btn btn-xs ${u.status==='active'?'btn-danger':'btn-success'}" onclick="toggleUserStatus('${u.id}')">
+                  ${u.status==='active'?'禁用':'启用'}
                 </button>
                 ` : '<span style="color:var(--text-muted);font-size:11px;">-</span>'}
               </td>
@@ -2839,134 +3068,129 @@ const errEl = document.getElementById('coError');
       </table>
     </div></div>
   `;
-        }
+}
 
-        function toggleUserStatus(userId) {
-            const users = getUsers();
-            const user = users.find(u => u.id === userId);
-            if (!user || user.role === 'admin') return;
-            user.status = user.status === 'active' ? 'disabled' : 'active';
-            saveUsers(users);
-            showToast(user.status === 'active' ? '✅ 用户已启用' : '🚫 用户已禁用');
-            renderAdminUsers();
-        }
+function toggleUserStatus(userId) {
+  const users = getUsers();
+  const user = users.find(u => u.id === userId);
+  if (!user || user.role === 'admin') return;
+  user.status = user.status === 'active' ? 'disabled' : 'active';
+  saveUsers(users);
+  showToast(user.status === 'active' ? '✅ 用户已启用' : '🚫 用户已禁用');
+  renderAdminUsers();
+}
 
-        // ============================================================
-        // VIEW: ADMIN ORDERS
-        // ============================================================
-        let adminOrderFilter = 'all';
-        let adminOrderSearch = '';
+// ============================================================
+// VIEW: ADMIN ORDERS
+// ============================================================
+let adminOrderFilter = 'all';
+let adminOrderSearch = '';
 
-        function renderAdminOrders() {
-            const orders = getOrders();
-            document.getElementById('view-adminOrders').innerHTML = `
+function renderAdminOrders() {
+  const orders = getOrders();
+  document.getElementById('view-adminOrders').innerHTML = `
     <div class="section-header"><div><h2>📦 订单管理</h2><p>共 ${orders.length} 个订单</p></div></div>
     ${renderSearchBar('🔍 搜索订单号/取件点/送达点...', 'adminOrderSearchInput', 'onAdminOrderSearch')}
     <div class="tabs" id="adminOrderTabs">
-      <button class="tab ${adminOrderFilter === 'all' ? 'active' : ''}" data-filter="all">全部</button>
-      <button class="tab ${adminOrderFilter === 'pending' ? 'active' : ''}" data-filter="pending">待接单</button>
-      <button class="tab ${adminOrderFilter === 'active' ? 'active' : ''}" data-filter="active">进行中</button>
-      <button class="tab ${adminOrderFilter === 'done' ? 'active' : ''}" data-filter="done">已完成</button>
+      <button class="tab ${adminOrderFilter==='all'?'active':''}" data-filter="all">全部</button>
+      <button class="tab ${adminOrderFilter==='pending'?'active':''}" data-filter="pending">待接单</button>
+      <button class="tab ${adminOrderFilter==='active'?'active':''}" data-filter="active">进行中</button>
+      <button class="tab ${adminOrderFilter==='done'?'active':''}" data-filter="done">已完成</button>
     </div>
     <div class="order-list" id="adminOrderList"></div>
   `;
 
-            setTimeout(() => { const inp = document.getElementById('adminOrderSearchInput'); if (inp) inp.value =
-                adminOrderSearch; }, 10);
+  setTimeout(() => { const inp = document.getElementById('adminOrderSearchInput'); if (inp) inp.value = adminOrderSearch; }, 10);
 
-            document.querySelectorAll('#adminOrderTabs .tab').forEach(tab => {
-                tab.onclick = function() {
-                    adminOrderFilter = this.dataset.filter;
-                    renderAdminOrders();
-                };
-            });
-            filterAdminOrders(adminOrderFilter);
-            document.getElementById('adminOrderList').onclick = function(e) {
-                const card = e.target.closest('.order-card');
-                if (card) {
-                    const orderId = card.getAttribute('data-order-id');
-                    if (orderId) showAdminOrderDetail(orderId);
-                }
-            };
-        }
+  document.querySelectorAll('#adminOrderTabs .tab').forEach(tab => {
+    tab.onclick = function() {
+      adminOrderFilter = this.dataset.filter;
+      renderAdminOrders();
+    };
+  });
+  filterAdminOrders(adminOrderFilter);
+  document.getElementById('adminOrderList').onclick = function(e) {
+    const card = e.target.closest('.order-card');
+    if (card) {
+      const orderId = card.getAttribute('data-order-id');
+      if (orderId) showAdminOrderDetail(orderId);
+    }
+  };
+}
 
-        function onAdminOrderSearch(val) { adminOrderSearch = val;
-            filterAdminOrders(adminOrderFilter); }
+function onAdminOrderSearch(val) { adminOrderSearch = val; filterAdminOrders(adminOrderFilter); }
 
-        function filterAdminOrders(filter) {
-            adminOrderFilter = filter;
-            let orders = getOrders();
-            if (filter === 'pending') orders = orders.filter(o => o.status && o.status.toLowerCase() === 'pending');
-            if (filter === 'active') orders = orders.filter(o => {
-                const status = o.status ? o.status.toLowerCase() : '';
-                return !['delivered', 'confirmed', 'rated', 'cancelled'].includes(status);
-            });
-            if (filter === 'done') orders = orders.filter(o => {
-                const status = o.status ? o.status.toLowerCase() : '';
-                return ['delivered', 'confirmed', 'rated'].includes(status);
-            });
-            orders = filterByKeyword(orders, adminOrderSearch, ['id', 'stationName', 'building', 'itemInfo']);
-            document.getElementById('adminOrderList').innerHTML = renderOrderList(orders, 'admin');
-        }
+function filterAdminOrders(filter) {
+  adminOrderFilter = filter;
+  let orders = getOrders();
+  if (filter === 'pending') orders = orders.filter(o => o.status === 'pending');
+  if (filter === 'active') orders = orders.filter(o => !['delivered','rated','cancelled'].includes(o.status));
+  if (filter === 'done') orders = orders.filter(o => ['delivered','rated'].includes(o.status));
+  orders = filterByKeyword(orders, adminOrderSearch, ['id', 'pickup', 'delivery', 'packageDesc']);
+  document.getElementById('adminOrderList').innerHTML = renderOrderList(orders, 'admin');
+}
 
-        function showAdminOrderDetail(orderId) {
-            const order = getOrders().find(o => o.id === orderId);
-            if (!order) return;
-            const user = getUsers().find(u => u.id === order.publisherId);
-            const body = `
+function showAdminOrderDetail(orderId) {
+  const order = getOrders().find(o => o.id == orderId);
+  if (!order) return;
+  const user = getUsers().find(u => u.id === order.userId);
+  const body = `
     ${renderOrderTimeline(order)}
     <div class="detail-row"><span class="detail-label">订单号</span><span class="detail-value">${order.id}</span></div>
-    <div class="detail-row"><span class="detail-label">状态</span><span class="detail-value"><span class="tag ${statusTagClass(order.status)}">${statusLabel(order.status)}</span></span></div>
-    <div class="detail-row"><span class="detail-label">下单用户</span><span class="detail-value">${user ? user.name : '未知'}</span></div>
+    <div class="detail-row"><span class="detail-label">状态</span><span class="detail-value"><span class="tag tag-${order.status}">${statusLabel(order.status)}</span></span></div>
+    <div class="detail-row"><span class="detail-label">下单用户</span><span class="detail-value">${user ? user.name : '未知'} (${user ? user.phone : ''})</span></div>
     <div class="detail-row"><span class="detail-label">跑腿员</span><span class="detail-value">${getRunnerName(order.runnerId)}</span></div>
-    <div class="detail-row"><span class="detail-label">取件点</span><span class="detail-value">${order.stationName || '-'}</span></div>
-    <div class="detail-row"><span class="detail-label">送达地址</span><span class="detail-value">${order.building || '-'}</span></div>
-    <div class="detail-row"><span class="detail-label">包裹</span><span class="detail-value">${order.itemInfo || '-'}</span></div>
-    <div class="detail-row"><span class="detail-label">配送费</span><span class="detail-value">¥${order.reward || 0}</span></div>
-    <div class="detail-row"><span class="detail-label">截止时间</span><span class="detail-value">${formatTime(order.timeoutAt)}</span></div>
-    <div class="detail-row"><span class="detail-label">创建时间</span><span class="detail-value">${formatTime(order.createdAt)}</span></div>
+    <div class="detail-row"><span class="detail-label">取件点</span><span class="detail-value">${order.pickupDetail}</span></div>
+    <div class="detail-row"><span class="detail-label">送达地址</span><span class="detail-value">${order.deliveryDetail}</span></div>
+    <div class="detail-row"><span class="detail-label">包裹</span><span class="detail-value">${order.packageType} — ${order.packageDesc}</span></div>
+    <div class="detail-row"><span class="detail-label">配送费/抽成</span><span class="detail-value">¥${order.price} / ¥${order.fee.toFixed(1)}</span></div>
+    <div class="detail-row"><span class="detail-label">截止时间</span><span class="detail-value">${order.deadline || '-'}</span></div>
+    <div class="detail-row"><span class="detail-label">创建时间</span><span class="detail-value">${order.createdAt}</span></div>
   `;
-            let actions = '<button class="btn btn-outline" onclick="closeModal()">关闭</button>';
-            if (['pending', 'accepted', 'picked_up', 'delivering'].includes(order.status ? order.status.toLowerCase() :
-                '')) {
-                actions += `<button class="btn btn-danger btn-sm" onclick="adminCancelOrder('${order.id}')">⚠ 强制取消</button>`;
-            }
-            openModal('📋 订单管理 #' + String(order.id).slice(-8), body, actions);
-        }
+  let actions = '<button class="btn btn-outline" onclick="closeModal()">关闭</button>';
+  if (['pending','accepted','picked_up','delivering'].includes(order.status)) {
+    actions += `<button class="btn btn-danger btn-sm" onclick="adminCancelOrder('${order.id}')">⚠ 强制取消</button>`;
+  }
+  openModal('📋 订单管理 #' + String(order.id).slice(-8), body, actions);
+}
 
-        function adminCancelOrder(orderId) {
-            if (!confirm('确定要强制取消该订单吗？此操作不可恢复。')) return;
-            const orders = getOrders();
-            const order = orders.find(o => o.id === orderId);
-            if (order) {
-                order.status = 'CANCELLED';
-                saveOrders(order);
-            }
-            closeModal();
-            showToast('⚠ 订单已被管理员取消');
-            renderAdminOrders();
-        }
+async function adminCancelOrder(orderId) {
+  if (!confirm('确定要强制取消该订单吗？此操作不可恢复。')) return;
+  try {
+    await apiRequest('/order/updateStatus', {
+      method: 'POST',
+      body: { orderId: orderId, status: 'CANCELLED' }
+    });
+    closeModal();
+    showToast('⚠ 订单已被管理员取消');
+    await loadOrdersFromBackend();
+    renderAdminOrders();
+  } catch (e) {
+    showToast('❌ ' + e.message);
+  }
+}
 
-        // ============================================================
-        // VIEW: ADMIN RUNNERS
-        // ============================================================
-        function renderAdminRunners() {
-            const runners = getUsers().filter(u => u.role === 'runner');
-            const applicants = getUsers().filter(u => u.role === 'user' && u.runnerApplication && u.runnerApplication
-                .status === 'pending');
+// ============================================================
+// VIEW: ADMIN RUNNERS
+// ============================================================
+function renderAdminRunners() {
+  const users = getUsers();
+  const runners = users.filter(u => u.role === 'runner');
+  const applicants = users.filter(u => u.role === 'user' && u.runnerApplication && u.runnerApplication.status === 'pending');
 
-            document.getElementById('view-adminRunners').innerHTML = `
+  document.getElementById('view-adminRunners').innerHTML = `
     <div class="section-header"><div><h2>🏃 跑腿员管理</h2><p>${runners.length} 个跑腿员，${applicants.length} 个待审核</p></div></div>
     ${applicants.length ? `
     <div class="card" style="border:2px solid var(--warning);margin-bottom:16px;">
       <h3 style="margin-bottom:12px;color:var(--warning);">⏳ 待审核申请 (${applicants.length})</h3>
       <div class="table-wrap"><table>
-        <thead><tr><th>姓名</th><th>学号</th><th>手机号</th><th>申请时间</th><th>操作</th></tr></thead>
+        <thead><tr><th>姓名</th><th>学号</th><th>手机号</th><th>申请理由</th><th>申请时间</th><th>操作</th></tr></thead>
         <tbody>${applicants.map(a => `
           <tr>
             <td style="font-weight:600;">${a.name}</td>
             <td>${a.studentId}</td>
             <td>${a.phone || '-'}</td>
+            <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.runnerApplication.reason || '无'}</td>
             <td>${a.runnerApplication.appliedAt}</td>
             <td>
               <button class="btn btn-xs btn-success" onclick="approveRunner('${a.id}')">✅ 通过</button>
@@ -2980,21 +3204,20 @@ const errEl = document.getElementById('coError');
         <thead><tr><th>姓名</th><th>学号</th><th>状态</th><th>完成订单</th><th>好评率</th><th>余额</th><th>操作</th></tr></thead>
         <tbody>
           ${runners.map(r => {
-            const doneOrders = getOrders().filter(o => o.runnerId === r.id && ['delivered','confirmed','rated'].includes(o.status ? o.status.toLowerCase() : ''));
-            const earnings = doneOrders.reduce((s,o) => s + (o.reward || 0), 0);
-            const ratedCount = doneOrders.filter(o => o.evaluation > 0).length;
-            const avgRating = ratedCount > 0 ? (doneOrders.filter(o=>o.evaluation>0).reduce((s,o)=>s+o.evaluation,0) / ratedCount).toFixed(1) : '-';
+            const doneOrders = getOrders().filter(o => o.runnerId === r.id && ['delivered','rated'].includes(o.status));
+            const ratedCount = doneOrders.filter(o => o.rating > 0).length;
+            const avgRating = ratedCount > 0 ? (doneOrders.filter(o=>o.rating>0).reduce((s,o)=>s+o.rating,0) / ratedCount).toFixed(1) : '-';
             return `
             <tr>
               <td style="font-weight:600;">${r.name}</td>
               <td>${r.studentId}</td>
-              <td><span class="badge-dot ${r.status === 'active' ? 'online' : 'offline'}"></span>${r.status === 'active' ? '在岗' : '禁用'}</td>
+              <td><span class="badge-dot ${r.status==='active'?'online':'offline'}"></span>${r.status==='active'?'在岗':'禁用'}</td>
               <td>${doneOrders.length}</td>
-              <td>${avgRating} ${avgRating !== '-' ? '⭐' : ''}</td>
-              <td style="color:var(--primary);font-weight:600;">¥${r.balance.toFixed(0)}</td>
+              <td>${avgRating} ${avgRating!=='-'?'⭐':''}</td>
+              <td style="color:var(--primary);font-weight:600;">¥${(r.balance || 0).toFixed(0)}</td>
               <td>
-                <button class="btn btn-xs ${r.status === 'active' ? 'btn-danger' : 'btn-success'}" onclick="toggleUserStatus('${r.id}');renderAdminRunners();">
-                  ${r.status === 'active' ? '禁用' : '启用'}
+                <button class="btn btn-xs ${r.status==='active'?'btn-danger':'btn-success'}" onclick="toggleUserStatus('${r.id}');renderAdminRunners();">
+                  ${r.status==='active'?'禁用':'启用'}
                 </button>
               </td>
             </tr>`;
@@ -3003,49 +3226,132 @@ const errEl = document.getElementById('coError');
       </table>
     </div></div>
   `;
-        }
+}
 
-        function approveRunner(userId) {
-            const users = getUsers();
-            const user = users.find(u => u.id === userId);
-            if (!user) return;
-            user.role = 'runner';
-            user.runnerApplication.status = 'approved';
-            user.runnerApplication.reviewedAt = new Date().toISOString().slice(0, 10);
-            user.runnerApplication.reviewedBy = currentUser.id;
-            saveUsers(users);
-            showToast('✅ 已通过 ' + user.name + ' 的跑腿申请');
-            renderAdminRunners();
-        }
+// ============================================================
+// APPROVE / REJECT RUNNER - 修复版
+// ============================================================
+function approveRunner(userId) {
+  if (!confirm('确认通过该用户的跑腿申请吗？')) return;
+  
+  // 从 localStorage 读取最新数据
+  const users = getUsers();
+  console.log('所有用户:', users); // 调试日志
+  
+  // 尝试多种方式匹配 userId
+  let user = users.find(u => u.id === userId);
+  if (!user) {
+    // 如果没找到，尝试用字符串匹配
+    user = users.find(u => String(u.id) === String(userId));
+  }
+  if (!user) {
+    // 再尝试用 studentId 匹配（如果有传 studentId）
+    user = users.find(u => u.studentId === userId);
+  }
+  
+  if (!user) {
+    showToast('❌ 用户不存在，userId: ' + userId);
+    console.error('未找到用户，userId:', userId, '可用用户:', users.map(u => ({id: u.id, name: u.name})));
+    return;
+  }
+  
+  console.log('找到用户:', user); // 调试日志
+  
+  // 更新用户角色和申请状态
+  user.role = 'runner';
+  user.runnerApplication.status = 'approved';
+  user.runnerApplication.reviewedAt = new Date().toISOString().slice(0, 10);
+  user.runnerApplication.reviewedBy = currentUser ? currentUser.id : 'admin';
+  
+  // 保存回 localStorage
+  saveUsers(users);
+  
+  // 如果当前登录用户就是被通过的人，更新 currentUser
+  if (currentUser && currentUser.id === user.id) {
+    currentUser = user;
+    saveSession({ id: user.id, role: user.role });
+  }
+  
+  showToast('✅ 已通过 ' + user.name + ' 的跑腿申请，他现在是跑腿员了！');
+  renderAdminRunners(); // 刷新页面
+}
 
-        function rejectRunner(userId) {
-            const users = getUsers();
-            const user = users.find(u => u.id === userId);
-            if (!user) return;
-            user.runnerApplication.status = 'rejected';
-            user.runnerApplication.reviewedAt = new Date().toISOString().slice(0, 10);
-            user.runnerApplication.reviewedBy = currentUser.id;
-            saveUsers(users);
-            showToast('❌ 已拒绝申请');
-            renderAdminRunners();
-        }
+function rejectRunner(userId) {
+  if (!confirm('确认拒绝该用户的跑腿申请吗？')) return;
+  
+  // 从 localStorage 读取最新数据
+  const users = getUsers();
+  
+  // 尝试多种方式匹配 userId
+  let user = users.find(u => u.id === userId);
+  if (!user) {
+    user = users.find(u => String(u.id) === String(userId));
+  }
+  if (!user) {
+    user = users.find(u => u.studentId === userId);
+  }
+  
+  if (!user) {
+    showToast('❌ 用户不存在，userId: ' + userId);
+    console.error('未找到用户，userId:', userId);
+    return;
+  }
+  
+  // 更新申请状态
+  user.runnerApplication.status = 'rejected';
+  user.runnerApplication.reviewedAt = new Date().toISOString().slice(0, 10);
+  user.runnerApplication.reviewedBy = currentUser ? currentUser.id : 'admin';
+  
+  // 保存回 localStorage
+  saveUsers(users);
+  
+  showToast('❌ 已拒绝 ' + user.name + ' 的跑腿申请');
+  renderAdminRunners(); // 刷新页面
+}
 
-        // ============================================================
-        // VIEW: ADMIN VIOLATIONS
-        // ============================================================
-        function renderAdminViolations() {
-            const violations = getViolations();
-            document.getElementById('view-adminViolations').innerHTML = `
-    <div class="section-header"><div><h2>⚠ 违规订单管控</h2><p>共 ${violations.length} 条违规记录</p></div></div>
+// ============================================================
+// VIEW: ADMIN VIOLATIONS
+// ============================================================
+function renderAdminViolations() {
+  const violations = getViolations();
+  const orders = getOrders();
+
+  // 获取最新的订单状态信息
+  const orderStatusMap = {};
+  orders.forEach(o => {
+    orderStatusMap[String(o.id)] = o.status;
+  });
+
+  document.getElementById('view-adminViolations').innerHTML = `
+    <div class="section-header">
+      <div><h2>⚠ 违规订单管控</h2><p>共 ${violations.length} 条违规记录</p></div>
+      <button class="btn btn-outline btn-sm" onclick="renderAdminViolations()">🔄 刷新</button>
+    </div>
     <div class="card" style="margin-bottom:16px;border:2px solid var(--danger);">
       <h3 style="margin-bottom:12px;color:var(--danger);">🚨 新增违规</h3>
       <div class="form-row">
-        <div class="form-group"><label>订单号</label><input type="text" id="vioOrderId" placeholder="例如：DD20260706001"></div>
-        <div class="form-group"><label>处理方式</label>
-          <select id="vioAction"><option value="warning">⚠ 警告</option><option value="cancel">❌ 强制取消</option><option value="fine">💰 罚款</option></select>
+        <div class="form-group">
+          <label>订单号</label>
+          <input type="text" id="vioOrderId" placeholder="输入订单ID" list="orderList">
+          <datalist id="orderList">
+            ${orders.filter(o => !['delivered','rated','cancelled'].includes(o.status)).map(o =>
+              `<option value="${o.id}">#${String(o.id).slice(-8)} - ${o.pickup} → ${o.delivery}</option>`
+            ).join('')}
+          </datalist>
+        </div>
+        <div class="form-group">
+          <label>处理方式</label>
+          <select id="vioAction">
+            <option value="warning">⚠ 警告</option>
+            <option value="cancel" selected>❌ 强制取消</option>
+            <option value="fine">💰 罚款</option>
+          </select>
         </div>
       </div>
-      <div class="form-group"><label>违规原因</label><textarea id="vioReason" placeholder="请填写违规原因..."></textarea></div>
+      <div class="form-group">
+        <label>违规原因</label>
+        <textarea id="vioReason" placeholder="请填写违规原因..."></textarea>
+      </div>
       <div class="error-msg" id="vioError"></div>
       <button class="btn btn-danger" onclick="submitViolation()">⚠ 提交违规处理</button>
     </div>
@@ -3053,43 +3359,107 @@ const errEl = document.getElementById('coError');
       <h3 style="margin-bottom:12px;">📋 违规记录</h3>
       ${violations.length === 0 ? '<div class="empty-state"><div class="icon">✅</div><h3>暂无违规记录</h3></div>' : `
       <div class="table-wrap"><table>
-        <thead><tr><th>订单号</th><th>原因</th><th>处理方式</th><th>处理人</th><th>时间</th></tr></thead>
-        <tbody>${violations.reverse().map(v => `
-          <tr>
-            <td style="font-weight:600;">#${v.orderId.slice(-8)}</td>
-            <td>${v.reason}</td>
-            <td><span class="tag ${v.action === 'cancel' ? 'tag-urgent' : v.action === 'fine' ? 'tag-accepted' : 'tag-pending'}">${{warning:'⚠ 警告',cancel:'❌ 取消',fine:'💰 罚款'}[v.action]}</span></td>
-            <td>${getUserName(v.reportedBy)}</td>
-            <td style="color:var(--text-secondary);">${v.createdAt}</td>
-          </tr>`).join('')}</tbody>
+        <thead><tr><th>订单号</th><th>当前状态</th><th>原因</th><th>处理方式</th><th>处理人</th><th>时间</th></tr></thead>
+        <tbody>${violations.slice().reverse().map(v => {
+          const status = orderStatusMap[String(v.orderId)] || '未知';
+          return `
+            <tr>
+              <td style="font-weight:600;">#${String(v.orderId).slice(-8)}</td>
+              <td><span class="tag tag-${status}">${statusLabel(status)}</span></td>
+              <td>${v.reason}</td>
+              <td><span class="tag ${v.action==='cancel'?'tag-urgent':v.action==='fine'?'tag-accepted':'tag-pending'}">${{warning:'⚠ 警告',cancel:'❌ 取消',fine:'💰 罚款'}[v.action]}</span></td>
+              <td>${getUserName(v.reportedBy)}</td>
+              <td style="color:var(--text-secondary);">${v.createdAt}</td>
+            </tr>
+          `;
+        }).join('')}</tbody>
       </table></div>`}
     </div>
   `;
-        }
+}
 
-        function submitViolation() {
-            const orderId = document.getElementById('vioOrderId').value.trim();
-            const reason = document.getElementById('vioReason').value.trim();
-            const action = document.getElementById('vioAction').value;
-            const errEl = document.getElementById('vioError');
-            if (!orderId) { errEl.style.display = 'block';
-                errEl.textContent = '请输入订单号'; return; }
-            if (!reason) { errEl.style.display = 'block';
-                errEl.textContent = '请填写违规原因'; return; }
-            const order = getOrders().find(o => o.id === orderId);
-            if (!order) { errEl.style.display = 'block';
-                errEl.textContent = '订单不存在'; return; }
-            reportViolation(orderId, reason, action);
-            showToast('⚠ 违规处理已提交');
-            renderAdminViolations();
-        }
+function submitViolation() {
+  const orderIdInput = document.getElementById('vioOrderId');
+  const reasonInput = document.getElementById('vioReason');
+  const actionSelect = document.getElementById('vioAction');
+  const errEl = document.getElementById('vioError');
 
-        // ============================================================
-        // VIEW: ADMIN SETTINGS
-        // ============================================================
-        function renderAdminSettings() {
-            const cfg = getConfig();
-            document.getElementById('view-adminSettings').innerHTML = `
+  const orderId = orderIdInput.value.trim();
+  const reason = reasonInput.value.trim();
+  const action = actionSelect.value;
+
+  if (!orderId) {
+    errEl.style.display = 'block';
+    errEl.textContent = '请输入订单号';
+    return;
+  }
+  if (!reason) {
+    errEl.style.display = 'block';
+    errEl.textContent = '请填写违规原因';
+    return;
+  }
+
+  const orders = getOrders();
+  let order = orders.find(o => String(o.id) === String(orderId));
+
+  if (!order) {
+    errEl.style.display = 'block';
+    errEl.textContent = '❌ 订单不存在。当前订单ID列表：' + orders.map(o => o.id).join(', ');
+    return;
+  }
+
+  errEl.style.display = 'none';
+
+  const confirmMsg = action === 'cancel'
+    ? '⚠ 确定要强制取消订单 #' + order.id + ' 吗？此操作不可恢复！'
+    : '⚠ 确定要记录违规 #' + order.id + ' 吗？';
+
+  if (!confirm(confirmMsg)) return;
+
+  // 保存违规记录
+  const violations = getViolations();
+  violations.push({
+    id: 'v' + Date.now(),
+    orderId: order.id,
+    reportedBy: currentUser ? currentUser.id : 'system',
+    reason: reason,
+    action: action,
+    createdAt: new Date().toISOString().slice(0, 16).replace('T', ' ')
+  });
+  saveViolations(violations);
+
+  // 如果是强制取消，更新订单状态
+  if (action === 'cancel') {
+    if (!['delivered', 'rated', 'cancelled'].includes(order.status)) {
+      order.status = 'cancelled';
+      order.cancelledAt = now();
+      order.cancelReason = reason || '管理员强制取消';
+      saveOrders(orders);
+      showToast('⚠ 订单 ' + orderId + ' 已被强制取消');
+    } else {
+      showToast('⚠ 订单 ' + orderId + ' 当前状态为 ' + order.status + '，无法取消');
+    }
+  } else {
+    showToast('✅ 违规记录已保存（' + (action === 'warning' ? '警告' : '罚款') + '）');
+  }
+
+  // 清空表单
+  orderIdInput.value = '';
+  reasonInput.value = '';
+
+  // 刷新页面
+  renderAdminViolations();
+  if (currentView === 'adminOrders') {
+    renderAdminOrders();
+  }
+}
+
+// ============================================================
+// VIEW: ADMIN SETTINGS
+// ============================================================
+function renderAdminSettings() {
+  const cfg = getConfig();
+  document.getElementById('view-adminSettings').innerHTML = `
     <div class="section-header"><div><h2>⚙ 平台设置</h2><p>管理平台运行参数</p></div></div>
     <div class="card" style="max-width:600px;">
       <h3 style="margin-bottom:16px;">💰 费率设置</h3>
@@ -3109,32 +3479,29 @@ const errEl = document.getElementById('coError');
       </div>
     </div>
   `;
-        }
+}
+function saveSettings() {
+  const rate = parseInt(document.getElementById('setFeeRate').value);
+  const minW = parseInt(document.getElementById('setMinWithdraw').value);
+  if (isNaN(rate) || rate < 0 || rate > 50) { document.getElementById('setError').style.display='block'; document.getElementById('setError').textContent='费率需在0-50之间'; return; }
+  saveConfig({ platformFeeRate: rate, minWithdraw: minW });
+  showToast('✅ 设置已保存');
+}
 
-        function saveSettings() {
-            const rate = parseInt(document.getElementById('setFeeRate').value);
-            const minW = parseInt(document.getElementById('setMinWithdraw').value);
-            if (isNaN(rate) || rate < 0 || rate > 50) { document.getElementById('setError').style.display = 'block';
-                document.getElementById('setError').textContent = '费率需在0-50之间'; return; }
-            saveConfig({ platformFeeRate: rate, minWithdraw: minW });
-            showToast('✅ 设置已保存');
-        }
+// ============================================================
+// VIEW: ADMIN STATS
+// ============================================================
+function renderAdminStats() {
+  const orders = getOrders();
+  const users = getUsers();
+  const runners = users.filter(u => u.role === 'runner');
+  const cfg = getConfig();
+  const byStatus = {};
+  ['pending','accepted','picked_up','delivering','delivered','rated','cancelled'].forEach(s => {
+    byStatus[s] = orders.filter(o => o.status === s).length;
+  });
 
-        // ============================================================
-        // VIEW: ADMIN STATS
-        // ============================================================
-        function renderAdminStats() {
-            const orders = getOrders();
-            const users = getUsers();
-            const runners = users.filter(u => u.role === 'runner');
-            const cfg = getConfig();
-            const byStatus = {};
-            ['pending', 'accepted', 'picked_up', 'delivering', 'delivered', 'confirmed', 'rated', 'cancelled'].forEach(
-            s => {
-                byStatus[s] = orders.filter(o => o.status && o.status.toLowerCase() === s).length;
-            });
-
-            document.getElementById('view-adminStats').innerHTML = `
+  document.getElementById('view-adminStats').innerHTML = `
     <div class="section-header"><div><h2>📈 订单数据统计</h2><p>平台运营数据分析</p></div></div>
     <div class="card" style="margin-bottom:16px;">
       <h3 style="margin-bottom:16px;">📦 订单状态分布</h3>
@@ -3148,38 +3515,40 @@ const errEl = document.getElementById('coError');
         </div>`).join('')}
     </div>
     <div class="stats-row">
-      <div class="stat-card"><div class="stat-icon green">📈</div><div><div class="stat-value">${orders.length ? (orders.filter(o => ['delivered','confirmed','rated'].includes(o.status ? o.status.toLowerCase() : '')).length / orders.length * 100).toFixed(1) : 0}%</div><div class="stat-label">订单完成率</div></div></div>
+      <div class="stat-card"><div class="stat-icon green">📈</div><div><div class="stat-value">${orders.length ? (orders.filter(o => ['delivered','rated'].includes(o.status)).length / orders.length * 100).toFixed(1) : 0}%</div><div class="stat-label">订单完成率</div></div></div>
       <div class="stat-card"><div class="stat-icon blue">👥</div><div><div class="stat-value">${users.filter(u => u.role === 'user').length}</div><div class="stat-label">注册用户</div></div></div>
       <div class="stat-card"><div class="stat-icon orange">🏃</div><div><div class="stat-value">${runners.length}</div><div class="stat-label">跑腿员</div></div></div>
-      <div class="stat-card"><div class="stat-icon red">❌</div><div><div class="stat-value">${orders.filter(o => o.status && o.status.toLowerCase() === 'cancelled').length}</div><div class="stat-label">已取消订单</div></div></div>
+      <div class="stat-card"><div class="stat-icon red">❌</div><div><div class="stat-value">${orders.filter(o => o.status === 'cancelled').length}</div><div class="stat-label">已取消</div></div></div>
     </div>
   `;
-        }
+}
 
-        // ============================================================
-        // INIT
-        // ============================================================
-        async function init() {
-            seedData();
-            const restored = await restoreSession();
-            if (restored) {
-                goHome();
-                // 每30秒刷新订单，检测超时取消
-                setInterval(async () => {
-                    if (currentUser) {
-                        await loadOrdersFromBackend();
-                        if (currentView === 'userOrders') renderUserOrders();
-                        else if (currentView === 'runnerHall') renderRunnerHall();
-                        else if (currentView === 'runnerDeliveries') renderRunnerDeliveries();
-                        else if (currentView === 'adminOrders') renderAdminOrders();
-                    }
-                }, 30000);
-            } else {
-                switchView('login');
-            }
-        }
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+  seedData();
+  checkOverdueOrders();
+  const restored = restoreSession();
+  if (restored) {
+    await loadOrdersFromBackend();
+    goHome();
+    // 每30秒刷新订单，检测超时取消
+    setInterval(async () => {
+      if (currentUser) {
+        await loadOrdersFromBackend();
+        if (currentView === 'userOrders') renderUserOrders();
+        else if (currentView === 'runnerHall') renderRunnerHall();
+        else if (currentView === 'runnerDeliveries') renderRunnerDeliveries();
+        else if (currentView === 'adminOrders') renderAdminOrders();
+      }
+    }, 30000);
+  } else {
+    switchView('login');
+  }
+}
 
-        init();
-    </script>
+init();
+</script>
 </body>
 </html>
