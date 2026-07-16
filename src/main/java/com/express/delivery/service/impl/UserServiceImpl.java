@@ -8,46 +8,34 @@ import com.express.delivery.mapper.UserMapper;
 import com.express.delivery.service.UserService;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-
-/**
- * 用户服务实现
- */
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
-    private static final String ROLE_USER = "USER";
-
     @Override
     public User register(RegisterRequest request) {
-        // 检查用户名是否已存在
-        User existing = findByUsername(request.getUsername());
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getStudentId, request.getStudentId());
+        User existing = baseMapper.selectOne(wrapper);
         if (existing != null) {
-            throw new RuntimeException("用户名已存在: " + request.getUsername());
+            throw new RuntimeException("该学号已注册");
         }
 
-        // 创建新用户
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(request.getPassword());
         user.setRealName(request.getRealName());
         user.setPhone(request.getPhone());
         user.setStudentId(request.getStudentId());
-        user.setRole(ROLE_USER);
-        user.setCreatedAt(LocalDateTime.now());
-        user.setUpdatedAt(LocalDateTime.now());
-
-        this.save(user);
-
-        // 返回时清除密码
-        user.setPassword(null);
+        user.setRole("USER");
+        baseMapper.insert(user);
         return user;
     }
 
     @Override
-    public User findByUsername(String username) {
+    public User login(String studentId, String password) {
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getUsername, username);
-        return this.getOne(wrapper);
+        wrapper.eq(User::getStudentId, studentId)
+                .eq(User::getPassword, password);
+        return baseMapper.selectOne(wrapper);
     }
 }

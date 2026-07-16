@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-
+@MapperScan("com.express.delivery.mapper")
 public class DeliveryApplication {
 
 	public static void main(String[] args) {

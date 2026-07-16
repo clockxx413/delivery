@@ -6,6 +6,8 @@ import com.express.delivery.service.OrderService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -24,6 +26,14 @@ public class OrderTimeoutTask {
     private OrderService orderService;
 
     /**
+     * 项目启动完成后立即执行一次，补处理之前过期的订单
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void init() {
+        cancelTimeoutOrders();
+    }
+
+    /**
      * 每30秒执行一次：将超时未接单的待接单订单自动取消
      */
     @Scheduled(fixedRate = 30000)
@@ -31,13 +41,13 @@ public class OrderTimeoutTask {
         log.info("开始执行订单超时自动取消任务...");
 
         LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Order::getStatus, OrderService.STATUS_PENDING)
-               .lt(Order::getTimeoutAt, LocalDateTime.now());
+        wrapper.eq(Order::getStatus, "PENDING")
+                .lt(Order::getTimeoutAt, LocalDateTime.now());
 
         List<Order> timeoutOrders = orderService.list(wrapper);
 
         for (Order order : timeoutOrders) {
-            order.setStatus(OrderService.STATUS_CANCELLED);
+            order.setStatus("CANCELLED");
             order.setUpdatedAt(LocalDateTime.now());
             orderService.updateById(order);
             log.info("订单 {} 已超时自动取消", order.getId());
